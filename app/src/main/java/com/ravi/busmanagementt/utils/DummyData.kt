@@ -1,0 +1,39 @@
+package com.ravi.busmanagementt.utils
+
+import androidx.compose.runtime.remember
+import com.google.android.gms.maps.model.LatLng
+import com.ravi.busmanagementt.presentation.home.BusStop
+import com.ravi.busmanagementt.presentation.home.StopStatus
+
+data class BusStop(
+    val id: Int,
+    val stopName: String,
+    val coordinates: LatLng,
+    val busId: String
+)
+
+data class Bus(
+    val id: String,
+    val name: String,
+    val stops: List<BusStop>
+)
+
+
+val bus1StopsList = listOf(
+    BusStop(1, "Lulumall", LatLng(19.228825, 72.854118),"bus1"),
+    BusStop(2, "Pulumall", LatLng(19.211425,72.977099),"bus1"),
+    BusStop(3, "Bubumall", LatLng(19.151621, 72.994369),"bus1"),
+    BusStop(4, "Dudumall", LatLng(19.208713, 73.009602),"bus1"),
+)
+
+
+
+val sampleStops = listOf(
+        BusStop(1, "Global School", "11:00 AM", "11:20 AM", StopStatus.REACHED),
+        BusStop(2, "City Center Mall", "11:30 AM", status = StopStatus.CURRENT),
+        BusStop(3, "Park Avenue", "11:45 AM", status = StopStatus.PENDING),
+        BusStop(4, "Railway Station", "12:00 PM", status = StopStatus.PENDING),
+        BusStop(5, "Airport Road", "12:15 PM", status = StopStatus.PENDING),
+        BusStop(6, "Final Destination", "12:30 PM", status = StopStatus.PENDING)
+    )
+
