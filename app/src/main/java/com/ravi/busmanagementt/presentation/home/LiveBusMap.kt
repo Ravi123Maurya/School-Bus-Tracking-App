@@ -1,14 +1,13 @@
 package com.ravi.busmanagementt.presentation.home
 
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animate
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,11 +17,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.OpenInFull
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -34,11 +35,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.ravi.busmanagementt.utils.bitmapDescriptor
+import androidx.compose.ui.unit.sp
 import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.ButtCap
 import com.google.android.gms.maps.model.LatLng
@@ -46,10 +47,11 @@ import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerComposable
+import com.google.maps.android.compose.MarkerInfoWindow
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberUpdatedMarkerState
-import com.ravi.busmanagementt.R
 import com.ravi.busmanagementt.data.repository.RealtimeLocation
 import com.ravi.busmanagementt.presentation.components.CameraAnimateFaB
 import com.ravi.busmanagementt.ui.theme.AppColors
@@ -140,18 +142,29 @@ fun LiveBusMap(
             }
         ) {
 
+            // Todo: It;s for testing, remove it if not in use
+            MarkerComposable(
+                state = rememberUpdatedMarkerState(LatLng(19.153656, 73.045368)),
+                title = "Your Stop"
+            ) {
+                ParentStopLocationMarker()
+            }
+
             // Markers - For Admin only
             allBusesLiveLocations?.let { buses ->
+                var index = 0
                 buses.forEach { (busId, liveLocations) ->
+                    index++
                     liveLocations.let { location ->
-
                         if (location.isNotEmpty()) {
                             val firstLocation = location.first()
                             val latLng = LatLng(firstLocation.latitude, firstLocation.longitude)
-                            Marker(
+                            MarkerComposable(
                                 state = rememberUpdatedMarkerState(latLng),
                                 title = "${busId} Start"
-                            )
+                            ) {
+                                BusStartLocationMarker(index)
+                            }
 
                             if (location.size > 1) {
                                 val lastLocation = location.last()
@@ -165,6 +178,7 @@ fun LiveBusMap(
                                     icon = busMarkerIcon,
                                     anchor = Offset(0.5f, 0.5f)
                                 )
+
                             }
                         }
                     }
@@ -191,10 +205,12 @@ fun LiveBusMap(
 
                 if (points.isNotEmpty()) {
                     // Bus Starting Point Marker
-                    Marker(
+                    MarkerComposable(
                         state = rememberUpdatedMarkerState(points.first()),
                         title = "Start"
-                    )
+                    ) {
+                        BusStartLocationMarker(0)
+                    }
 
                     // Bus Current Location Marker
                     if (points.size > 1) {
@@ -268,7 +284,7 @@ fun LiveBusMap(
     }
 }
 
-@Preview(showBackground = true, showSystemUi = true)
+
 @Composable
 private fun MapExpandButton(onExpandClick: () -> Unit = {}) {
     Card(
@@ -296,30 +312,96 @@ private fun MapExpandButton(onExpandClick: () -> Unit = {}) {
 }
 
 
-// todo: Test custom compose marker - remove it not in use
+/*
+ todo: Test custom compose marker - remove it if not in use
+ */
 @Composable
-fun CustomMarker() {
-
-    val infiniteTransition = rememberInfiniteTransition()
-    val animateCircle by infiniteTransition.animateFloat(
-        initialValue = .2f,
-        targetValue = 1.2f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(500),
-            repeatMode = RepeatMode.Reverse
-        )
-    )
+private fun ParentStopLocationMarker(
+    modifier: Modifier = Modifier,
+    color: Color = Color(0xFFE91E63),
+) {
 
     Box(
-        modifier = Modifier
-            .size(50.dp)
-            .graphicsLayer {
-                scaleX = animateCircle
-                scaleY = animateCircle
-            }
-            .clip(CircleShape)
-            .background(Color.Magenta)
+        modifier = modifier
+            .size(40.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(
+            modifier = modifier
+                .size(40.dp)
+        ) {
+            val width = size.width
+            val height = size.height
+            val center = Offset(x = width / 2, y = height / 2)
 
-    )
+            // Outer Ring
+            drawCircle(
+                color = color.copy(alpha = .2f),
+                radius = width / 2f,
+                center = center
+            )
+
+            // Inner Ring
+            drawCircle(
+                color = color.copy(alpha = .6f),
+                radius = width / 2.5f,
+                center = center
+            )
+
+            // Inner White Circle
+            drawCircle(
+                color = Color.White,
+                radius = width / 4f,
+                center = center
+            )
+        }
+
+        Icon(
+            imageVector = Icons.Default.Person,
+            contentDescription = "",
+            tint = color,
+            modifier = Modifier.size(16.dp)
+        )
+    }
+
 
 }
+
+@Composable
+private fun BusStartLocationMarker(busCount: Int) {
+
+    Box(
+        modifier = Modifier.size(24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(
+            modifier = Modifier.size(24.dp)
+        ) {
+
+            val center = Offset(size.width / 2f, size.height / 2f)
+
+            // Outer White Circle
+            drawCircle(
+                color = Color.White,
+                radius = size.width / 2f,
+                center = center
+            )
+
+            // Inner Red Circle
+            drawCircle(
+                color = Color.Red,
+                radius = size.width / 2.5f,
+                center = center
+            )
+        }
+
+        Text(
+            text = busCount.toString(),
+            color = Color.White,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold
+        )
+    }
+
+}
+

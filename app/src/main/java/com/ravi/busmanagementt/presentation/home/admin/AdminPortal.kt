@@ -212,7 +212,7 @@ object AdminFeatures {
     fun getAllFeatures(): List<AdminFeature> = listOf(
         AdminFeature(
             icon = Icons.Default.DirectionsBus,
-            label = "Live Buses",
+            label = "Track Buses",
             cardColor = Color(0xFF3B82F6),
             route = NavRoutes.ALL_BUSES_SCREEN
         ),
@@ -235,22 +235,10 @@ object AdminFeatures {
             route = ""
         ),
         AdminFeature(
-            icon = Icons.Default.LocationOn,
-            label = "Track Buses",
-            cardColor = Color(0xFFEF4444),
-            route = ""
-        ),
-        AdminFeature(
             icon = Icons.Default.Assessment,
             label = "Reports",
             cardColor = Color(0xFF06B6D4),
             route = NavRoutes.REPORTS_SCREEN
-        ),
-        AdminFeature(
-            icon = Icons.Default.Settings,
-            label = "Settings",
-            cardColor = Color(0xFF64748B),
-            route = ""
         ),
         AdminFeature(
             icon = Icons.Default.Notifications,

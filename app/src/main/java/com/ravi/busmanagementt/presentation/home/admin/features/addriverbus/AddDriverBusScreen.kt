@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -39,6 +40,7 @@ import com.ravi.busmanagementt.presentation.components.NavBackScaffold
 import com.ravi.busmanagementt.presentation.viewmodels.AddDriverBusState
 import com.ravi.busmanagementt.presentation.viewmodels.AddDriverBusViewModel
 import com.ravi.busmanagementt.ui.theme.AppColors
+import com.ravi.busmanagementt.utils.showToast
 
 
 // Main Screen
@@ -68,7 +70,6 @@ fun AddDriverBusScreen(
             is AddDriverBusState.Success -> {
                 Toast.makeText(context, "Driver & Bus added successfully", Toast.LENGTH_SHORT)
                     .show()
-                navController.popBackStack()
             }
         }
     }
@@ -88,6 +89,7 @@ private fun AddDriverBusContent(
     onSaveClick: (BusAndDriver) -> Unit,
     onCancelClick: () -> Unit
 ) {
+    val context = LocalContext.current
     var formState by remember { mutableStateOf(DriverBusFormState()) }
     var errors by remember { mutableStateOf(FormErrors()) }
     var showRouteDialog by remember { mutableStateOf(false) }
@@ -157,23 +159,6 @@ private fun AddDriverBusContent(
                     )
                 }
 
-                item {
-                    PasswordField(
-                        value = formState.confirmPassword,
-                        onValueChange = {
-                            formState = formState.copy(confirmPassword = it)
-                            errors = errors.copy(confirmPasswordError = null)
-                        },
-                        isVisible = formState.isConfirmPasswordVisible,
-                        onVisibilityToggle = {
-                            formState = formState.copy(
-                                isConfirmPasswordVisible = !formState.isConfirmPasswordVisible
-                            )
-                        },
-                        error = errors.confirmPasswordError,
-                        label = "Confirm Password"
-                    )
-                }
 
                 // Bus Information Section
                 item {
@@ -222,10 +207,10 @@ private fun AddDriverBusContent(
                         )
                     }
                 } else {
-                    items(
+                    itemsIndexed(
                         items = formState.routes,
-                        key = { "${it.stopName}-${it.location}" }
-                    ) { route ->
+                        key = {i, route -> "$i-${route.geoPoint}" }
+                    ) { i, route ->
                         RouteCard(
                             route = route,
                             onDelete = {
@@ -278,8 +263,12 @@ private fun AddDriverBusContent(
         AddRouteDialog(
             onDismiss = { showRouteDialog = false },
             onAdd = { route ->
+                if(formState.routes.contains(route)){
+                   context.showToast("Route already added")
+                    return@AddRouteDialog
+                }
                 formState = formState.copy(
-                    routes = formState.routes + route // todo: Fatal error: App crashing if adding same route twice
+                    routes = formState.routes + route
                 )
                 errors = errors.copy(routesError = null)
                 showRouteDialog = false
@@ -724,11 +713,6 @@ private fun validateForm(state: DriverBusFormState): FormErrors {
         errors = errors.copy(passwordError = "Password must be at least 6 characters")
     }
 
-    if (state.confirmPassword.isBlank()) {
-        errors = errors.copy(confirmPasswordError = "Please confirm password")
-    } else if (state.password != state.confirmPassword) {
-        errors = errors.copy(confirmPasswordError = "Passwords do not match")
-    }
 
     if (state.busId.isBlank()) {
         errors = errors.copy(busIdError = "Bus ID is required")
@@ -790,9 +774,8 @@ private fun validateRouteStop(state: RouteStopForm): RouteStopForErrors {
 // UI State
 data class DriverBusFormState(
     val driverName: String = "",
-    val email: String = "@gmail.com",
-    val password: String = "123456",
-    val confirmPassword: String = "123456",
+    val email: String = "",
+    val password: String = "",
     val busId: String = "BUS_4001",
     val routes: List<BusStop> = emptyList(),
     val isPasswordVisible: Boolean = true,
@@ -803,7 +786,6 @@ data class FormErrors(
     val driverNameError: String? = null,
     val emailError: String? = null,
     val passwordError: String? = null,
-    val confirmPasswordError: String? = null,
     val busIdError: String? = null,
     val routesError: String? = null
 )
@@ -834,7 +816,6 @@ private fun FormErrors.hasErrors(): Boolean {
     return driverNameError != null ||
             emailError != null ||
             passwordError != null ||
-            confirmPasswordError != null ||
             busIdError != null ||
             routesError != null
 }
