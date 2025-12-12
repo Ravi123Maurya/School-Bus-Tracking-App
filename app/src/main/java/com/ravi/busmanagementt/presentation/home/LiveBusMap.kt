@@ -1,11 +1,13 @@
 package com.ravi.busmanagementt.presentation.home
 
 import android.graphics.DashPathEffect
+import android.util.Log
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,6 +21,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.OpenInFull
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Wash
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -36,6 +41,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PointMode
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -76,6 +83,7 @@ fun LiveBusMap(
     liveLocationPoints: List<LatLng>? = null,
     allBusesLiveLocations: Map<String, List<RealtimeLocation>>? = null,
     allBusesRoutesLatLng: List<List<LatLng>>? = null,
+    allBusesStopsLatLng: List<List<LatLng>>? = null,
     animateToBus: String? = null,
     onExpandClick: () -> Unit,
     onMapLoaded: () -> Unit = {}
@@ -150,7 +158,7 @@ fun LiveBusMap(
             }
         ) {
 
-            // Todo: It;s for testing, remove it if not in use
+            // Todo: It;s for testing, remove it if not in use - Dummy coordinate
             MarkerComposable(
                 state = rememberUpdatedMarkerState(LatLng(19.153656, 73.045368)),
                 title = "Your Stop"
@@ -193,7 +201,7 @@ fun LiveBusMap(
                 }
             }
 
-            // Paths - For Admin only
+            // All Buses Live Paths - For Admin only
             allBusesLiveLocations?.let { buses ->
                 buses.forEach { (busId, liveLocations) ->
                     val points = liveLocations.map { LatLng(it.latitude, it.longitude) }
@@ -217,7 +225,7 @@ fun LiveBusMap(
                         state = rememberUpdatedMarkerState(points.first()),
                         title = "Start"
                     ) {
-                        BusStartLocationMarker(0)
+                        BusStartLocationMarker(1)
                     }
 
                     // Bus Current Location Marker
@@ -232,7 +240,7 @@ fun LiveBusMap(
                 }
             }
 
-            // Bus live Path
+            // Bus live Path (Parent - Driver)
             liveLocationPoints?.let {
                 if (it.size > 1)
                     Polyline(
@@ -251,20 +259,45 @@ fun LiveBusMap(
                 )
             }
 
-            // Bus Route Path (Admin)
+            // Buses Routes Path (Admin)
             allBusesRoutesLatLng?.let {
 
                 it.forEach { points ->
                     Polyline(
                         points = points,
-                        color = Color.Red,
+                        color = Color.Red.copy(alpha = 0.5f),
                         width = 16f,
                         startCap = ButtCap(),
 //                        pattern = PATTERN_DASHED,
                         jointType = JointType.ROUND
                     )
+                    Polyline(
+                        points = points,
+                        color = Color.White,
+                        width = 6f,
+                        startCap = ButtCap(),
+                        pattern = PATTERN_DASHED,
+                        jointType = JointType.ROUND
+                    )
                 }
 
+            }
+
+            // Buses Stops (Admin)
+            allBusesStopsLatLng?.let {
+                it.forEach { points ->
+                    if (points.isNotEmpty()) {
+                        points.forEach { point ->
+                            Log.d("LiveBusMap", "Point: $point")
+                            MarkerComposable(
+                                state = rememberUpdatedMarkerState(point),
+                                title = "Stop"
+                            ) {
+                                BusStopLocationsMarker()
+                            }
+                        }
+                    }
+                }
             }
 
         }
@@ -336,9 +369,6 @@ private fun MapExpandButton(onExpandClick: () -> Unit = {}) {
 }
 
 
-/*
- todo: Test custom compose marker - remove it if not in use
- */
 @Composable
 private fun ParentStopLocationMarker(
     modifier: Modifier = Modifier,
@@ -391,6 +421,11 @@ private fun ParentStopLocationMarker(
 
 }
 
+
+/******
+ * Live Bus Start Marker (All)
+ * @param(busCount) - Bus Count
+ * *******/
 @Composable
 private fun BusStartLocationMarker(busCount: Int) {
 
@@ -424,6 +459,29 @@ private fun BusStartLocationMarker(busCount: Int) {
             color = Color.White,
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold
+        )
+    }
+
+}
+
+
+@Preview(showBackground = true)
+@Composable
+private fun BusStopLocationsMarker() {
+
+    Box(
+        modifier = Modifier
+            .size(20.dp)
+            .clip(CircleShape)
+            .border(1.dp, Color.Red, CircleShape)
+            .background(Color.White),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            modifier = Modifier.size(14.dp),
+            imageVector = Icons.Default.Stop,
+            contentDescription = "",
+            tint = Color.Gray
         )
     }
 

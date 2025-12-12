@@ -371,7 +371,7 @@ private fun HomeScreenContent(
                             BusStopPoints(
                                 stops = busStopPoints,
                                 realtimeLocation = realtimeLocation
-                            ) // todo : pass busStopPoints - done - check once to confirm*
+                            )
                     }
 
                     // Logout Button todo: Remove logout button

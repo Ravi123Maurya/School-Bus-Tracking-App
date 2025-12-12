@@ -332,7 +332,7 @@ class AdminRepositoryImpl @Inject constructor(
                 return@flow
             }
             try {
-                // Future todo: delete parent email in firebase auth as well*
+                // Future todo: delete parent email in firebase "Authentication" as well*
 
                 val parentDoc = fireStore.collection("parents").document(parentId)
                 parentDoc.delete().await()
@@ -346,7 +346,6 @@ class AdminRepositoryImpl @Inject constructor(
         }
     }
 
-    // todo: Call this fun in MapViewModel for allbusesroutes
     override suspend fun getDirectionsRoute(stops: List<LatLng>): List<LatLng> {
         if (stops.size < 2) return emptyList()
         val apiKey = BuildConfig.MAP_API_KEY

@@ -52,7 +52,7 @@ fun BusStopsScreen(
     BusStopsContent(
         screenTitle = if (busId != null) "$busId Stops" else "Bus Stops"  ,
         busStops = busStopsState ?: emptyList(),
-        realtimeLocation = realtimeLocations, // todo: realtime data not reflecting - fixed
+        realtimeLocation = realtimeLocations,
         onNavBackClick = { navController.popBackStack() }
     )
 

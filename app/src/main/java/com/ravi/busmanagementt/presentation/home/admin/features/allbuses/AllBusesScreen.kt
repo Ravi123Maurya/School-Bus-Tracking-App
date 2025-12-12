@@ -144,15 +144,13 @@ fun AllBusesScreen(
         isLoading = isLoading,
         buses = buses,
         onSeeLocationClick = { busId ->
-            navController.navigate(HomeScreen(busId = busId)) // <-- Navigation Testing here
-//            + "?busId=$busId"
+            navController.navigate(HomeScreen(busId = busId))
         },
         onSeeStopsClick = { busId ->
             navController.navigate(BusStopsScreen(busId = busId))
         },
         onBusClick = { busId ->
             // Navigate to bus details screen // todo
-//            navController.navigate(NavRoutes.BUS_DETAILS_SCREEN + "/$busId")
         },
         onNavBackClick = { navController.popBackStack() }
     )

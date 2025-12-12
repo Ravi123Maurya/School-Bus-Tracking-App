@@ -38,10 +38,9 @@ import com.ravi.busmanagementt.data.repository.RealtimeLocation
 import com.ravi.busmanagementt.ui.theme.AppColors
 import com.ravi.busmanagementt.utils.DistanceMatrix
 import com.ravi.busmanagementt.utils.TimeMatrix
-import java.util.Date
 
-// todo : remove dummy data
-// todo : fetch real stop points, calculate distance and time matrix in realtime, update status persistently,
+
+// todo : calculate distance and time matrix in realtime, update status persistently,
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun BusStopPoints(

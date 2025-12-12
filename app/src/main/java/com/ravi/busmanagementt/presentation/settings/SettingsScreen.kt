@@ -48,8 +48,6 @@ import com.ravi.busmanagementt.presentation.viewmodels.PortalViewModel
 import com.ravi.busmanagementt.ui.theme.AppColors
 
 
-
-// todo : Save stopName and location as well in firestore (parent Doc)
 @Composable
 fun SettingsScreen(navController: NavController, busViewModel: BusViewModel = hiltViewModel()) {
 

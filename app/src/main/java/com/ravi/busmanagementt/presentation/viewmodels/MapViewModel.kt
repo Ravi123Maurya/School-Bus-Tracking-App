@@ -54,22 +54,19 @@ class MapViewModel @Inject constructor(
     private val _viewState = MutableStateFlow(MapViewState())
     val viewState = _viewState.asStateFlow()
 
-    val allBusesStopsLatLng: StateFlow<List<List<LatLng>>?> = adminRepository.getAllBuses()
-        .map { buses ->
-            buses.data?.map { bus ->
-                val schoolPoint = LatLng(19.185766, 73.051846)
-               val stopLatLngList = bus.routes.map { route ->
-                    val geoPoint = route.geoPoint
-                    LatLng(geoPoint.latitude, geoPoint.longitude)
-                }
-                adminRepository.getDirectionsRoute(listOf(schoolPoint) + stopLatLngList)
-            }
+    private val _allBusesStopsLatLng = MutableStateFlow<List<List<LatLng>>>(emptyList())
+    val allBusesStopsLatLng = _allBusesStopsLatLng.asStateFlow()
+    val allBusesRoutesLatLng: StateFlow<List<List<LatLng>>> = allBusesStopsLatLng.map { allStops ->
+        // This will re-run whenever allBusesStopsLatLng changes
+        allStops.map { singleBusStopList ->
+            val schoolPoint = LatLng(19.185766, 73.051846)
+            adminRepository.getDirectionsRoute(listOf(schoolPoint) + singleBusStopList)
         }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
-        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
     private val _realtimeLocationState = MutableStateFlow<List<RealtimeLocation>?>(null)
     val realtimeLocationState = _realtimeLocationState.asStateFlow()
 
@@ -100,19 +97,24 @@ class MapViewModel @Inject constructor(
     val busMarkerIcon = MutableStateFlow<BitmapDescriptor?>(null)
     val isAdminPortal = MutableStateFlow(false)
 
-    /// Dummy
-    var dummyBusesRoutes = MutableStateFlow<List<List<LatLng>>>(emptyList())
-    fun getRoutes() = viewModelScope.launch {
-        val stopsLatLngList = dummyBusStops.map { it.coordinates }
-        Log.d("MapViewModel", "Calling GetDirectionRoute")
-        val directionRoutes = adminRepository.getDirectionsRoute(stopsLatLngList)
-        Log.d("MapViewModel", "Direction Routes: $directionRoutes")
-        dummyBusesRoutes.value = listOf(directionRoutes)
-    }
-    /////
 
     init {
-        getRoutes()
+
+        adminRepository.getAllBuses()
+            .onEach { buses ->
+                val stopLists = buses.data?.map { bus ->
+                    bus.routes.map { route ->
+                        val geoPoint = route.geoPoint
+                        LatLng(geoPoint.latitude, geoPoint.longitude)
+                    }
+                }
+                _allBusesStopsLatLng.value = stopLists ?: emptyList()
+            }
+            .catch { }
+            .launchIn(viewModelScope)
+
+
+
         viewModelScope.launch {
             _mapContent.value = {
 
@@ -120,8 +122,8 @@ class MapViewModel @Inject constructor(
                 val currentRealtimeLocation by realtimeLocationState.collectAsState()
                 val animateToThisBus by navBusId.collectAsState()
                 val busIcon by busMarkerIcon.collectAsState()
-                val allBusesRoutes = allBusesStopsLatLng.collectAsState()
-                val allDummyBusesRoutes = dummyBusesRoutes.collectAsState()
+                val allBusesRoutes = allBusesRoutesLatLng.collectAsState()
+                val allBusesStops = allBusesStopsLatLng.collectAsState()
 
                 LiveBusMap(
                     mapState = mapState,
@@ -136,7 +138,8 @@ class MapViewModel @Inject constructor(
                         )
                     } else null,
                     allBusesLiveLocations = if (isAdminPortal.value) realtimeAllBusesLocationState.value else null,
-                    allBusesRoutesLatLng = if (isAdminPortal.value)  allBusesRoutes.value else null,
+                    allBusesRoutesLatLng = if (isAdminPortal.value) allBusesRoutes.value else null,
+                    allBusesStopsLatLng = if (isAdminPortal.value) allBusesStops.value else null,
                     animateToBus = animateToThisBus,
                     onExpandClick = { toggleMapSize() },
                     onMapLoaded = {
@@ -205,7 +208,6 @@ class MapViewModel @Inject constructor(
             isMapExpanded = !_viewState.value.isMapExpanded
         )
     }
-
 
 
 }
