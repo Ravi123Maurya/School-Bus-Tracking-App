@@ -2,7 +2,6 @@ package com.ravi.busmanagementt.presentation.viewmodels
 
 import android.content.Context
 import android.util.Log
-import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -12,10 +11,10 @@ import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.CameraPositionState
 import com.ravi.busmanagementt.R
-import com.ravi.busmanagementt.data.repository.AdminRepositoryImpl
 import com.ravi.busmanagementt.data.repository.RealtimeLocation
 import com.ravi.busmanagementt.data.serivce.LocationSharingStateManager
 import com.ravi.busmanagementt.domain.model.BusStop
+import com.ravi.busmanagementt.domain.repository.AdminRepository
 import com.ravi.busmanagementt.domain.repository.FirestoreBusRepository
 import com.ravi.busmanagementt.domain.repository.RealtimeLocationRepository
 import com.ravi.busmanagementt.presentation.home.LiveBusMap
@@ -23,6 +22,7 @@ import com.ravi.busmanagementt.presentation.home.MapState
 import com.ravi.busmanagementt.utils.NetworkConnectivityManager
 import com.ravi.busmanagementt.utils.NetworkStatus
 import com.ravi.busmanagementt.utils.bitmapDescriptor
+import com.ravi.busmanagementt.utils.dummyBusStops
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,7 +43,7 @@ class MapViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val realtimeLocationRepository: RealtimeLocationRepository,
     private val locationSharingStateManager: LocationSharingStateManager,
-    private val adminRepositoryImpl: AdminRepositoryImpl,
+    private val adminRepository: AdminRepository,
     private val firestoreBusRepository: FirestoreBusRepository,
     private val connectivityManager: NetworkConnectivityManager
 ) : ViewModel() {
@@ -54,6 +54,22 @@ class MapViewModel @Inject constructor(
     private val _viewState = MutableStateFlow(MapViewState())
     val viewState = _viewState.asStateFlow()
 
+    val allBusesStopsLatLng: StateFlow<List<List<LatLng>>?> = adminRepository.getAllBuses()
+        .map { buses ->
+            buses.data?.map { bus ->
+                val schoolPoint = LatLng(19.185766, 73.051846)
+               val stopLatLngList = bus.routes.map { route ->
+                    val geoPoint = route.geoPoint
+                    LatLng(geoPoint.latitude, geoPoint.longitude)
+                }
+                adminRepository.getDirectionsRoute(listOf(schoolPoint) + stopLatLngList)
+            }
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
     private val _realtimeLocationState = MutableStateFlow<List<RealtimeLocation>?>(null)
     val realtimeLocationState = _realtimeLocationState.asStateFlow()
 
@@ -84,7 +100,19 @@ class MapViewModel @Inject constructor(
     val busMarkerIcon = MutableStateFlow<BitmapDescriptor?>(null)
     val isAdminPortal = MutableStateFlow(false)
 
+    /// Dummy
+    var dummyBusesRoutes = MutableStateFlow<List<List<LatLng>>>(emptyList())
+    fun getRoutes() = viewModelScope.launch {
+        val stopsLatLngList = dummyBusStops.map { it.coordinates }
+        Log.d("MapViewModel", "Calling GetDirectionRoute")
+        val directionRoutes = adminRepository.getDirectionsRoute(stopsLatLngList)
+        Log.d("MapViewModel", "Direction Routes: $directionRoutes")
+        dummyBusesRoutes.value = listOf(directionRoutes)
+    }
+    /////
+
     init {
+        getRoutes()
         viewModelScope.launch {
             _mapContent.value = {
 
@@ -92,6 +120,8 @@ class MapViewModel @Inject constructor(
                 val currentRealtimeLocation by realtimeLocationState.collectAsState()
                 val animateToThisBus by navBusId.collectAsState()
                 val busIcon by busMarkerIcon.collectAsState()
+                val allBusesRoutes = allBusesStopsLatLng.collectAsState()
+                val allDummyBusesRoutes = dummyBusesRoutes.collectAsState()
 
                 LiveBusMap(
                     mapState = mapState,
@@ -106,6 +136,7 @@ class MapViewModel @Inject constructor(
                         )
                     } else null,
                     allBusesLiveLocations = if (isAdminPortal.value) realtimeAllBusesLocationState.value else null,
+                    allBusesRoutesLatLng = if (isAdminPortal.value)  allBusesRoutes.value else null,
                     animateToBus = animateToThisBus,
                     onExpandClick = { toggleMapSize() },
                     onMapLoaded = {
@@ -147,7 +178,6 @@ class MapViewModel @Inject constructor(
     fun getLocationUpdates(busId: String) {
         realtimeLocationRepository.getLocationUpdatesFromFRTD(busId)
             .onEach { location ->
-                Log.d("MapViewModel", "${busId} Location: $location")
                 _realtimeLocationState.value = location
             }.catch {
 
@@ -155,9 +185,8 @@ class MapViewModel @Inject constructor(
     }
 
     fun getAllBusesRealtimeLocations() {
-        adminRepositoryImpl.getRealtimeLocationsOfAllBuses()
+        adminRepository.getRealtimeLocationsOfAllBuses()
             .onEach { data ->
-                Log.d("MapViewModel", "All Buses Locations Data: $data")
                 _realtimeAllBusesLocationState.value = data
             }.catch {
 
@@ -177,16 +206,6 @@ class MapViewModel @Inject constructor(
         )
     }
 
-
-    // For Driver only - start/stop toggle button
-
-    fun toggleSharingLocationState() = viewModelScope.launch {
-        if (!isSharingLocation.value && !connectivityManager.isNetworkAvailable()) {
-            Toast.makeText(context, "No internet connection", Toast.LENGTH_SHORT).show()
-            return@launch
-        }
-        locationSharingStateManager.toggleSharingLocationState()
-    }
 
 
 }

@@ -1,5 +1,6 @@
 package com.ravi.busmanagementt.domain.repository
 
+import com.google.android.gms.maps.model.LatLng
 import com.ravi.busmanagementt.data.repository.RealtimeLocation
 import com.ravi.busmanagementt.domain.model.BusAndDriver
 import com.ravi.busmanagementt.domain.model.BusStop
@@ -24,5 +25,7 @@ interface AdminRepository {
 
     suspend fun updateParent(parent: Parent): Flow<Resource<String>>
     suspend fun deleteParent(parentId: String, parentEmail: String): Flow<Resource<String>>
+
+    suspend fun getDirectionsRoute(stops: List<LatLng>) : List<LatLng>
 
 }

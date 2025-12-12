@@ -1,6 +1,7 @@
 package com.ravi.busmanagementt.data.repository
 
 import android.util.Log
+import com.google.android.gms.maps.model.LatLng
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -8,6 +9,9 @@ import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.GeoPoint
+import com.ravi.busmanagementt.BuildConfig
+import com.ravi.busmanagementt.data.remote.DirectionsApiService
+import com.ravi.busmanagementt.data.remote.decodePolyline
 import com.ravi.busmanagementt.domain.model.BusAndDriver
 import com.ravi.busmanagementt.domain.model.BusStop
 import com.ravi.busmanagementt.domain.model.Parent
@@ -23,7 +27,8 @@ import javax.inject.Inject
 class AdminRepositoryImpl @Inject constructor(
     val fireStore: FirebaseFirestore,
     val firebaseAuth: FirebaseAuth,
-    val realtimeDb: FirebaseDatabase
+    val realtimeDb: FirebaseDatabase,
+    private val directionsApiService: DirectionsApiService
 ) : AdminRepository {
 
     override suspend fun addBus(driver: BusAndDriver): Flow<Resource<String>> {
@@ -261,7 +266,7 @@ class AdminRepositoryImpl @Inject constructor(
                 override fun onDataChange(snapshot: DataSnapshot) {
                     val realtimeLocations = mutableMapOf<String, List<RealtimeLocation>>()
                     for (childSnapshot in snapshot.children) {
-                        try{
+                        try {
                             val busId = childSnapshot.key
                             val locations = childSnapshot.children.mapNotNull { locationSnapshot ->
                                 locationSnapshot.getValue(RealtimeLocation::class.java)
@@ -269,7 +274,7 @@ class AdminRepositoryImpl @Inject constructor(
                             if (busId != null && locations.isNotEmpty()) {
                                 realtimeLocations[busId] = locations
                             }
-                        } catch (e: Exception){
+                        } catch (e: Exception) {
                             Log.d("AdminRepositoryImpl", "Exception: ${e.message}")
                         }
                     }
@@ -293,7 +298,7 @@ class AdminRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updateParent(parent: Parent): Flow<Resource<String>> {
-        return flow{
+        return flow {
             emit(Resource.Loading())
             if (parent.parentId.isBlank()) {
                 emit(Resource.Error("Parent ID is missing. Cannot update."))
@@ -308,7 +313,7 @@ class AdminRepositoryImpl @Inject constructor(
                 )
                 parentDoc.update(updatedParentData).await()
                 emit(Resource.Success("Parent updated successfully"))
-            } catch (e: Exception){
+            } catch (e: Exception) {
                 e.printStackTrace()
                 emit(Resource.Error(e.localizedMessage ?: "Something went wrong"))
             }
@@ -316,25 +321,64 @@ class AdminRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun deleteParent(parentId: String, parentEmail: String): Flow<Resource<String>> {
-        return flow{
+    override suspend fun deleteParent(
+        parentId: String,
+        parentEmail: String
+    ): Flow<Resource<String>> {
+        return flow {
             emit(Resource.Loading())
             if (parentId.isBlank()) {
                 emit(Resource.Error("Parent ID is missing. Cannot delete."))
                 return@flow
             }
             try {
-                // Later todo: delete parent email in firebase auth as well*
+                // Future todo: delete parent email in firebase auth as well*
 
                 val parentDoc = fireStore.collection("parents").document(parentId)
                 parentDoc.delete().await()
                 emit(Resource.Success("Parent deleted successfully"))
-            }catch (e: Exception){
+            } catch (e: Exception) {
                 e.printStackTrace()
                 emit(Resource.Error(e.localizedMessage ?: "Something went wrong during deletion"))
             }
 
 
         }
+    }
+
+    // todo: Call this fun in MapViewModel for allbusesroutes
+    override suspend fun getDirectionsRoute(stops: List<LatLng>): List<LatLng> {
+        if (stops.size < 2) return emptyList()
+        val apiKey = BuildConfig.MAP_API_KEY
+        val queryOptions = mutableMapOf(
+            "origin" to "${stops.first().latitude},${stops.first().longitude}",
+            "destination" to "${stops.last().latitude},${stops.last().longitude}",
+            "key" to apiKey
+        )
+
+        if (stops.size > 2) {
+            val waypointsString = stops.subList(1, stops.size - 1)
+                .joinToString(separator = "|") { "${it.latitude},${it.longitude}" }
+            queryOptions["waypoints"] = waypointsString
+        }
+
+        Log.d("DirectionsAPI", "Requesting Directions with options: $queryOptions")
+
+        try {
+            // 4. Make the call with the single map object
+            val response = directionsApiService.getDirections(queryOptions)
+
+            if (response.routes.isNotEmpty()) {
+                val encodedPolyline = response.routes.first().overview_polyline.points
+                Log.d("DirectionsAPI", "Success: Route found!")
+                return decodePolyline(encodedPolyline)
+            } else {
+                Log.e("DirectionsAPI", "Error: API returned no routes. Check coordinates and API key.")
+            }
+        } catch (e: Exception) {
+            // This will catch network errors (like HTTP 400) or JSON parsing errors.
+            Log.e("DirectionsAPI", "Error fetching directions: ${e.message}", e)
+        }
+        return emptyList()
     }
 }

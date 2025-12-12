@@ -5,6 +5,8 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.database
 import com.google.firebase.firestore.FirebaseFirestore
+import com.ravi.busmanagementt.BuildConfig
+import com.ravi.busmanagementt.data.remote.DirectionsApiService
 import com.ravi.busmanagementt.data.repository.AdminRepositoryImpl
 import com.ravi.busmanagementt.data.repository.AuthRepositoryImpl
 import com.ravi.busmanagementt.data.repository.FirestoreBusRepositoryImpl
@@ -22,6 +24,10 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
 import javax.inject.Singleton
 
 
@@ -94,4 +100,45 @@ abstract class RepositoryModule { // Must be an 'abstract class' for @Binds meth
         adminRepositoryImpl: AdminRepositoryImpl
     ): AdminRepository
 
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+object NetworkModule{
+
+    @Provides
+    @Singleton
+    fun provideLoggingInterceptor() : HttpLoggingInterceptor{
+        return HttpLoggingInterceptor().apply {
+            level = if (BuildConfig.DEBUG){
+                HttpLoggingInterceptor.Level.BODY
+            }else{
+                HttpLoggingInterceptor.Level.NONE
+            }
+        }
+    }
+
+    @Provides
+    @Singleton
+    fun provideOkHttpClient(loggingInterceptor: HttpLoggingInterceptor): OkHttpClient{
+        return OkHttpClient.Builder()
+            .addInterceptor(loggingInterceptor)
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit{
+        return Retrofit.Builder()
+            .baseUrl("https://maps.googleapis.com/")
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideDirectionsApiService(retrofit: Retrofit): DirectionsApiService{
+        return  retrofit.create(DirectionsApiService::class.java)
+    }
 }

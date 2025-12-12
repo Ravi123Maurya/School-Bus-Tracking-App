@@ -1,5 +1,6 @@
 package com.ravi.busmanagementt.presentation.home
 
+import android.graphics.DashPathEffect
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
@@ -42,7 +43,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.ButtCap
+import com.google.android.gms.maps.model.Dash
+import com.google.android.gms.maps.model.Dot
+import com.google.android.gms.maps.model.Gap
+import com.google.android.gms.maps.model.JointType
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.PatternItem
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
@@ -69,6 +75,7 @@ fun LiveBusMap(
     stopLocation: LatLng? = null,
     liveLocationPoints: List<LatLng>? = null,
     allBusesLiveLocations: Map<String, List<RealtimeLocation>>? = null,
+    allBusesRoutesLatLng: List<List<LatLng>>? = null,
     animateToBus: String? = null,
     onExpandClick: () -> Unit,
     onMapLoaded: () -> Unit = {}
@@ -84,6 +91,7 @@ fun LiveBusMap(
                 zoomControlsEnabled = false
             )
         }
+    val PATTERN_DASHED = remember { listOf(Dash(30f), Gap(20f), Dot(), Gap(20f)) }
     val mapProperties = remember { MapProperties(isMyLocationEnabled = true) }
     val customModifier =
         if (isMapExpanded) modifier.fillMaxSize() else modifier
@@ -241,6 +249,22 @@ fun LiveBusMap(
                     state = rememberUpdatedMarkerState(it),
                     title = "Your stop"
                 )
+            }
+
+            // Bus Route Path (Admin)
+            allBusesRoutesLatLng?.let {
+
+                it.forEach { points ->
+                    Polyline(
+                        points = points,
+                        color = Color.Red,
+                        width = 16f,
+                        startCap = ButtCap(),
+//                        pattern = PATTERN_DASHED,
+                        jointType = JointType.ROUND
+                    )
+                }
+
             }
 
         }

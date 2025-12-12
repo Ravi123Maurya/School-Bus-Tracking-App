@@ -19,11 +19,11 @@ data class Bus(
 )
 
 
-val bus1StopsList = listOf(
-    BusStop(1, "Lulumall", LatLng(19.228825, 72.854118),"bus1"),
-    BusStop(2, "Pulumall", LatLng(19.211425,72.977099),"bus1"),
-    BusStop(3, "Bubumall", LatLng(19.151621, 72.994369),"bus1"),
-    BusStop(4, "Dudumall", LatLng(19.208713, 73.009602),"bus1"),
+val dummyBusStops = listOf(
+    BusStop(1, "Lulumall", LatLng(19.184176, 73.042684),"bus1"),
+    BusStop(2, "Pulumall", LatLng(19.167085,73.046446),"bus1"),
+    BusStop(3, "Bubumall", LatLng(19.162585, 73.045997),"bus1"),
+    BusStop(4, "Dudumall", LatLng(19.161234, 73.046667),"bus1"),
 )
 
 

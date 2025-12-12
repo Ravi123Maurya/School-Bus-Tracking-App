@@ -46,7 +46,7 @@ import com.ravi.busmanagementt.presentation.components.NavBackScaffold
 import com.ravi.busmanagementt.presentation.viewmodels.BusViewModel
 import com.ravi.busmanagementt.presentation.viewmodels.PortalViewModel
 import com.ravi.busmanagementt.ui.theme.AppColors
-import com.ravi.busmanagementt.utils.bus1StopsList
+
 
 
 // todo : Save stopName and location as well in firestore (parent Doc)
