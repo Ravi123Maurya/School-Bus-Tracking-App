@@ -91,6 +91,7 @@ import com.ravi.busmanagementt.presentation.components.AlertDialogBus
 import com.ravi.busmanagementt.presentation.components.InternetConnectionAlertView
 import com.ravi.busmanagementt.presentation.home.admin.AdminPortal
 import com.ravi.busmanagementt.presentation.viewmodels.BusViewModel
+import com.ravi.busmanagementt.utils.DistanceMatrix
 import kotlinx.coroutines.launch
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -99,7 +100,7 @@ fun HomeScreen(
     navController: NavController,
     newBusId: String? = null, // todo: animate camera to bus location
     mapViewModel: MapViewModel,
-    authViewModel: AuthViewModel = hiltViewModel(),
+    authViewModel: AuthViewModel,
     portalViewModel: PortalViewModel = hiltViewModel(),
     busViewModel: BusViewModel = hiltViewModel(),
 ) {
@@ -139,10 +140,10 @@ fun HomeScreen(
     ///////////////////////////////////////////////////////////////////////
 
     LaunchedEffect(portal) {
-        if (portal?.value == Portals.ADMIN.value){
+        if (portal?.value == Portals.ADMIN.value) {
             mapViewModel.isAdminPortal.value = true
             mapViewModel.getAllBusesRealtimeLocations()
-        }else{
+        } else {
             mapViewModel.isAdminPortal.value = false
         }
     }
@@ -160,7 +161,7 @@ fun HomeScreen(
     }
     LaunchedEffect(newBusId) {
         Log.d("HomeScreen", "NavBusId: $newBusId")
-        if (!newBusId.isNullOrEmpty()){
+        if (!newBusId.isNullOrEmpty()) {
             mapViewModel.navBusId.value = newBusId
             mapViewModel.toggleMapSize()
         }
@@ -359,7 +360,16 @@ private fun HomeScreenContent(
                                     it.last().latitude,
                                     it.last().longitude
                                 )
-                            BusLiveUpdate(busCurrentLocation, parentStopLocation)
+                            val eta =
+                                if (parentStopLocation == null && busCurrentLocation == null) "0" else DistanceMatrix.calculateScheduleTimeETA(
+                                    realtimeLocations = it,
+                                    stopLocation = parentStopLocation ?: busCurrentLocation!!
+                                ).toString()
+                            BusLiveUpdate(
+                                dis1 = busCurrentLocation,
+                                dis2 = parentStopLocation,
+                                eta = eta
+                            )
                         }
 
                     if (portal == Portals.ADMIN.value) {
@@ -474,7 +484,8 @@ fun BusLiveInfoCard(
 @Composable
 fun BusLiveUpdate(
     dis1: LatLng?,
-    dis2: LatLng?
+    dis2: LatLng?,
+    eta: String = "12"
 ) {
 
     var distance by remember { mutableStateOf("0 km") }
@@ -505,7 +516,7 @@ fun BusLiveUpdate(
                 LivePulseIndicator(size = 32.dp, color = AppColors.OnPurpleBlue)
             }
             Spacer(Modifier.height(12.dp))
-            InfoRow(label = "Estimated Time", "12 mins")
+            InfoRow(label = "Estimated Time", "$eta mins")
             InfoRow(label = "Remaining Distance", distance)
         }
 
@@ -515,7 +526,7 @@ fun BusLiveUpdate(
 @Composable
 fun InfoRow(
     label: String,
-    tDistance: String
+    value: String
 ) {
     Row(
         modifier = Modifier
@@ -524,7 +535,7 @@ fun InfoRow(
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(label, color = AppColors.OnPurpleBlue)
-        Text(tDistance, color = Color.White, fontWeight = FontWeight.Bold)
+        Text(value, color = Color.White, fontWeight = FontWeight.Bold)
     }
 }
 

@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.messaging.FirebaseMessaging
 import com.ravi.busmanagementt.data.datastore.PortalManager
+import com.ravi.busmanagementt.data.datastore.Portals
 import com.ravi.busmanagementt.data.datastore.UserPrefManager
 import com.ravi.busmanagementt.data.serivce.LocationService
 import com.ravi.busmanagementt.domain.repository.AuthRepository
@@ -30,36 +31,34 @@ class AuthViewModel @Inject constructor(
     private val userRepository: UserRepository
 ) : ViewModel() {
 
-    private val _isLoggedIn = MutableStateFlow(firebaseAuth.currentUser != null)
-    val isLoggedIn = _isLoggedIn.asStateFlow()
-
     private val _loginState = MutableStateFlow<AuthState>(AuthState.Idle)
     var loginState = _loginState.asStateFlow()
-
-    private val authStateListener = FirebaseAuth.AuthStateListener { auth ->
-        _isLoggedIn.value = auth.currentUser != null
-    }
 
     val email = firebaseAuth.currentUser?.email
 
     init {
-        firebaseAuth.addAuthStateListener(authStateListener)
+        if (firebaseAuth.currentUser != null){
+            _loginState.value = AuthState.Success("VMSuccess: Login Successful")
+        }
     }
 
-    fun login(email: String, password: String) = viewModelScope.launch {
-        authRepository.login(email, password).collect { result ->
+    fun login(email: String, password: String, portal: String) = viewModelScope.launch {
+        authRepository.login(email, password, portal).collect { result ->
             when (result) {
                 is Resource.Success -> {
-                    Log.d("AuthViewModel", "Calling setFCMToken")
+                    Log.d("AuthCheck", ("VMSuccess: " + result.message))
                     setFcmToken()
                     _loginState.value = AuthState.Success("Login successful")
                 }
 
                 is Resource.Error -> {
-                    _loginState.value = AuthState.Error("Login failed, Account doesn't exist")
+                    Log.e("AuthCheck", result.message ?: "Idk - error")
+                    _loginState.value = AuthState.Error(result.message ?: "Login failed")
+                    logout()
                 }
 
                 is Resource.Loading -> {
+                    Log.d("AuthCheck", "Auth Login - Loading")
                     _loginState.value = AuthState.Loading
                 }
             }
@@ -76,7 +75,7 @@ class AuthViewModel @Inject constructor(
                 return@addOnCompleteListener
             } else {
                 token = task.result
-                viewModelScope.launch {  userRepository.setFcmToken(token) }
+                viewModelScope.launch { userRepository.setFcmToken(token) }
             }
         }
     }
@@ -90,11 +89,11 @@ class AuthViewModel @Inject constructor(
         userPrefManager.setBusId(null)
         PortalManager.setParentBusStopLocation(context, null)
         authRepository.logout()
+        _loginState.value = AuthState.Idle
     }
 
     override fun onCleared() {
         super.onCleared()
-        firebaseAuth.removeAuthStateListener(authStateListener)
     }
 
 }

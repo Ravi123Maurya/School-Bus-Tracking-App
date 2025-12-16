@@ -8,23 +8,29 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import com.ravi.busmanagementt.domain.model.BusAndDriver
 import com.ravi.busmanagementt.presentation.auth.LoginScreen
 import com.ravi.busmanagementt.presentation.auth.AccountTypeScreen
 import com.ravi.busmanagementt.presentation.home.HomeScreen
 import com.ravi.busmanagementt.presentation.home.admin.features.addriverbus.AddDriverBusScreen
 import com.ravi.busmanagementt.presentation.home.admin.features.allbuses.AllBusesScreen
 import com.ravi.busmanagementt.presentation.home.admin.features.allbuses.BusStopsScreen
+import com.ravi.busmanagementt.presentation.home.admin.features.busesandroutes.BusesAndRoutesScreen
+import com.ravi.busmanagementt.presentation.home.admin.features.busesandroutes.EditBusAndStopsScreen
 import com.ravi.busmanagementt.presentation.home.admin.features.manageparents.ManageParentsScreen
 import com.ravi.busmanagementt.presentation.home.admin.features.reports.ReportsScreen
 import com.ravi.busmanagementt.presentation.onboarding.OnboardingScreen
 import com.ravi.busmanagementt.presentation.profile.ProfileScreen
 import com.ravi.busmanagementt.presentation.settings.SettingsScreen
+import com.ravi.busmanagementt.presentation.viewmodels.AuthState
 import com.ravi.busmanagementt.presentation.viewmodels.AuthViewModel
 import com.ravi.busmanagementt.presentation.viewmodels.MapViewModel
+import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 
 
@@ -34,18 +40,18 @@ fun NavGraph(
 ) {
 
     val authViewModel: AuthViewModel = hiltViewModel()
-    val isLoggedIn by authViewModel.isLoggedIn.collectAsState()
+    val loginState by authViewModel.loginState.collectAsState()
 
-    if (isLoggedIn) {
-        MainNavGraph(mapViewModel)
+    if (loginState is AuthState.Success) {
+        MainNavGraph(mapViewModel, authViewModel)
     } else {
-        AuthNavGraph()
+        AuthNavGraph(authViewModel)
     }
 
 }
 
 @Composable
-fun AuthNavGraph() {
+fun AuthNavGraph(authViewModel: AuthViewModel) {
     val navController = rememberNavController()
     NavHost(
         navController = navController,
@@ -53,20 +59,21 @@ fun AuthNavGraph() {
     ) {
 
         composable(NavRoutes.ONBOARDING_SCREEN) {
-            OnboardingScreen(navController) {
+            OnboardingScreen(onComplete = {
                 navController.navigate(NavRoutes.ACC_TYPE_SCREEN) {
                     popUpTo(NavRoutes.ONBOARDING_SCREEN) {
                         inclusive = true
                     }
                 }
-            }
+            })
         }
 
         composable(NavRoutes.ACC_TYPE_SCREEN) {
             AccountTypeScreen(navController)
         }
-        composable(NavRoutes.LOGIN_SCREEN) {
-            LoginScreen(navController)
+        composable<LoginScreen> {
+            val args = it.toRoute<LoginScreen>()
+            LoginScreen(navController, authViewModel, portal = args.portal)
         }
     }
 }
@@ -74,7 +81,8 @@ fun AuthNavGraph() {
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun MainNavGraph(
-    mapViewModel: MapViewModel
+    mapViewModel: MapViewModel,
+    authViewModel: AuthViewModel
 ) {
     val navController = rememberNavController()
     NavHost(
@@ -83,7 +91,12 @@ fun MainNavGraph(
     ) {
         composable<HomeScreen> {
             val args = it.toRoute<HomeScreen>()
-            HomeScreen(navController, mapViewModel = mapViewModel, newBusId = args.busId)
+            HomeScreen(
+                navController,
+                mapViewModel = mapViewModel,
+                authViewModel = authViewModel,
+                newBusId = args.busId
+            )
         }
 
         composable(
@@ -99,16 +112,24 @@ fun MainNavGraph(
             ProfileScreen(navController)
         }
 
+
         //----------- Admin ---------//
         composable(NavRoutes.ALL_BUSES_SCREEN) {
             AllBusesScreen(navController)
+        }
+        composable(NavRoutes.MANAGE_PARENT_SCREEN) {
+            ManageParentsScreen(navController)
         }
         composable(NavRoutes.ADD_DRIVER_BUS_SCREEN) {
             AddDriverBusScreen(navController)
         }
 
-        composable(NavRoutes.MANAGE_PARENT_SCREEN) {
-            ManageParentsScreen(navController)
+        composable(NavRoutes.BUSES_AND_ROUTES_SCREEN) {
+            BusesAndRoutesScreen(navController)
+        }
+        composable<EditBusAndStopsScreen> {
+            val args = it.toRoute<EditBusAndStopsScreen>()
+            EditBusAndStopsScreen(navController, busId = args.busId)
         }
 
         composable(NavRoutes.REPORTS_SCREEN) {
@@ -125,11 +146,22 @@ fun MainNavGraph(
 
 
 @Serializable
+data class LoginScreen(
+    val portal: String
+)
+
+
+@Serializable
 data class HomeScreen(
     val busId: String? = null
 )
 
 @Serializable
 data class BusStopsScreen(
+    val busId: String? = null
+)
+
+@Serializable
+data class EditBusAndStopsScreen(
     val busId: String? = null
 )

@@ -580,7 +580,7 @@ private fun BusItemPreview(){
         id = 1,
         name = "Dipendra Vishwakarma",
         number = "12345",
-        driverName = "John Doe",
+        driverName = "driver name",
         status = BusStatus.ACTIVE,
         currentLocation = "123 Main St",
         totalStops = 10,

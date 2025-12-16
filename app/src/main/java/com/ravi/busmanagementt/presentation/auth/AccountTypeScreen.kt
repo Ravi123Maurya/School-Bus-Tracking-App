@@ -50,6 +50,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavController
+import com.ravi.busmanagementt.presentation.navigation.LoginScreen
+import com.ravi.busmanagementt.utils.showToast
 
 
 // Data Models
@@ -112,20 +114,20 @@ fun AccountTypeScreen(
     AccountTypeContent(
         onParentAccountClick = {
             portalViewModel.setPortal(Portals.PARENT)
-            navController.navigate(NavRoutes.LOGIN_SCREEN)
+            navController.navigate(LoginScreen(portal = Portals.PARENT.name))
         },
         onDriverAccountClick = {
             portalViewModel.setPortal(Portals.DRIVER)
-            navController.navigate(NavRoutes.LOGIN_SCREEN)
+            navController.navigate(LoginScreen(portal = Portals.DRIVER.name))
         },
         onCaretakerAccountClick = {
-            Toast.makeText(context, "Coming soon...", Toast.LENGTH_LONG).show()
+            context.showToast("Coming soon...")
 //            portalViewModel.setPortal(Portals.CARETAKER)
 //            navController.navigate(NavRoutes.LOGIN_SCREEN)
         },
         onAdminAccountClick = {
             portalViewModel.setPortal(Portals.ADMIN)
-            navController.navigate(NavRoutes.LOGIN_SCREEN)
+            navController.navigate(LoginScreen(portal = Portals.ADMIN.name))
         }
     )
 }

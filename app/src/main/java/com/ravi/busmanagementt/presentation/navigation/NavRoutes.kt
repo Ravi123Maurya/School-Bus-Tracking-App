@@ -14,6 +14,8 @@ object NavRoutes{
     const val ALL_BUSES_SCREEN = "all_buses"
     const val ADD_DRIVER_BUS_SCREEN = "add_bus"
     const val MANAGE_PARENT_SCREEN = "manage_parent"
+    const val BUSES_AND_ROUTES_SCREEN = "buses_and_routes"
+    const val EDIT_BUS_AND_STOPS_SCREEN = "edit_bus_and_stops"
     const val REPORTS_SCREEN = "reports"
 
     const val MAIN_SCREENS = "main"

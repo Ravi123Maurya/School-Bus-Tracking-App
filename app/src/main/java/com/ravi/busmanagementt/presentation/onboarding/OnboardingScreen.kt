@@ -43,7 +43,6 @@ data class OnboardingPage(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun OnboardingScreen(
-    navController: NavController,
     onComplete: () -> Unit
 ) {
     val pages = listOf(
@@ -75,17 +74,16 @@ fun OnboardingScreen(
             .fillMaxSize()
             .background(Color(0xFF4A4543))
     ) {
-        // Decorative curved lines background
-        DecorativeBackground()
+
 
         // Main content card
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.92f)
-                .padding(horizontal = 24.dp, vertical = 48.dp)
+                .fillMaxHeight()
+//                .padding(horizontal = 24.dp, vertical = 48.dp)
                 .align(Alignment.Center),
-            shape = RoundedCornerShape(32.dp),
+            shape = RoundedCornerShape(0.dp),
             colors = CardDefaults.cardColors(
                 containerColor = pages[pagerState.currentPage].backgroundColor
             ),
@@ -116,7 +114,7 @@ fun OnboardingScreen(
                     modifier = Modifier.padding(bottom = 32.dp)
                 ) {
                     repeat(pages.size) { index ->
-                        PageIndicator(
+                        PageIndicatorAnimated(
                             isActive = pagerState.currentPage == index
                         )
                     }
@@ -173,17 +171,6 @@ fun OnboardingScreen(
             }
         }
     }
-}
-
-@Composable
-private fun DecorativeBackground() {
-    // You can add custom canvas drawing here for curved lines
-    // For simplicity, using a simple background
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFF4A4543))
-    )
 }
 
 @Composable
@@ -277,19 +264,6 @@ private fun OnboardingPageContent(
     }
 }
 
-@Composable
-private fun PageIndicator(
-    isActive: Boolean
-) {
-    Box(
-        modifier = Modifier
-            .size(if (isActive) 10.dp else 8.dp)
-            .clip(CircleShape)
-            .background(
-                if (isActive) Color.Black else Color.Black.copy(alpha = 0.3f)
-            )
-    )
-}
 
 // Alternative version with animated indicator width
 @Composable
@@ -315,17 +289,11 @@ private fun PageIndicatorAnimated(
 
 @Preview
 @Composable
-fun OnboardingScreenRoute(navController: NavController = rememberNavController()) {
+fun OnboardingScreenRoute() {
     OnboardingScreen(
-        navController = navController,
         onComplete = {
             // Save that onboarding is completed (SharedPreferences/DataStore)
             // Navigate to login or home screen
-            navController.navigate(NavRoutes.LOGIN_SCREEN) {
-                popUpTo(NavRoutes.ONBOARDING_SCREEN) {
-                    inclusive = true
-                }
-            }
         }
     )
 }

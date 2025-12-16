@@ -25,7 +25,7 @@
         android:theme="@style/AppSplash">
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyDlUYwCIBwh0y--g72nZTQnV0UlGUdE2aE"/>
+            android:value="${MAP_API_KEY}"/>
         <activity
             android:name=".MainActivity"
             android:exported="true"

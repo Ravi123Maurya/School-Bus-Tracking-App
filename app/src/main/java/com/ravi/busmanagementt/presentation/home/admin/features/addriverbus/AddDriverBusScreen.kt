@@ -725,7 +725,7 @@ private fun validateForm(state: DriverBusFormState): FormErrors {
     return errors
 }
 
-private fun validateRouteStop(state: RouteStopForm): RouteStopForErrors {
+fun validateRouteStop(state: RouteStopForm): RouteStopForErrors {
     var errors = RouteStopForErrors()
     if (state.stopName.isBlank()) {
         errors = errors.copy(stopNameError = "Stop name is required")
@@ -805,7 +805,7 @@ data class RouteStopForErrors(
 )
 
 
-private fun RouteStopForErrors.hasErrors(): Boolean {
+fun RouteStopForErrors.hasErrors(): Boolean {
     return stopNameError != null ||
             locationError != null ||
             latitudeError != null ||

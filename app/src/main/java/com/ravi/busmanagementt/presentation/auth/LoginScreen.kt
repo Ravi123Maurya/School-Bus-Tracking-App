@@ -75,7 +75,9 @@ import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.animateLottieCompositionAsState
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.ravi.busmanagementt.R
+import com.ravi.busmanagementt.data.datastore.Portals
 import com.ravi.busmanagementt.presentation.components.CircularLoading
+import com.ravi.busmanagementt.presentation.navigation.HomeScreen
 import com.ravi.busmanagementt.presentation.navigation.NavRoutes
 import com.ravi.busmanagementt.presentation.viewmodels.AuthState
 import com.ravi.busmanagementt.presentation.viewmodels.AuthViewModel
@@ -87,31 +89,28 @@ import kotlinx.coroutines.launch
 @Composable
 fun LoginScreen(
     navController: NavController,
-    authViewModel: AuthViewModel = hiltViewModel()
+    authViewModel: AuthViewModel,
+    portal: String
 ) {
     val context = LocalContext.current
     val authState by authViewModel.loginState.collectAsStateWithLifecycle()
 
+    LaunchedEffect(Unit) {
+        context.showToast("Portal: $portal")
+    }
 
     LaunchedEffect(authState) {
         when (val state = authState) {
             is AuthState.Error -> {
-                Toast.makeText(context, state.message, Toast.LENGTH_SHORT).show()
+                context.showToast(state.message)
             }
 
-            AuthState.Idle -> {
+            AuthState.Idle -> {}
 
-            }
-
-            AuthState.Loading -> {
-            }
+            AuthState.Loading -> {}
 
             is AuthState.Success -> {
-                Toast.makeText(context, state.message, Toast.LENGTH_SHORT).show()
-//                context.showToast(state.message)
-                navController.navigate(NavRoutes.HOME_SCREEN) {
-                    popUpTo(NavRoutes.LOGIN_SCREEN) { inclusive = true }
-                }
+                context.showToast(state.message)
             }
         }
     }
@@ -120,7 +119,7 @@ fun LoginScreen(
     LoginContent(
         hasLoginPressed = authState is AuthState.Loading,
         onLoginPressed = { email, password ->
-            authViewModel.login(email, password)
+            authViewModel.login(email, password, portal)
         },
         onBackPress = { navController.popBackStack() },
     )

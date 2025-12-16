@@ -230,9 +230,9 @@ object AdminFeatures {
         ),
         AdminFeature(
             icon = Icons.Default.Route,
-            label = "Routes",
+            label = "Buses/Routes",
             cardColor = Color(0xFFF59E0B),
-            route = ""
+            route = NavRoutes.BUSES_AND_ROUTES_SCREEN
         ),
         AdminFeature(
             icon = Icons.Default.Assessment,
@@ -241,8 +241,8 @@ object AdminFeatures {
             route = NavRoutes.REPORTS_SCREEN
         ),
         AdminFeature(
-            icon = Icons.Default.Notifications,
-            label = "Notifications",
+            icon = Icons.Default.ChatBubble,
+            label = "Announcement",
             cardColor = Color(0xFFEC4899),
             route = ""
         )

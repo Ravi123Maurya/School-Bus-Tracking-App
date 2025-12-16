@@ -2,6 +2,8 @@ package com.ravi.busmanagementt.domain.model
 
 import com.google.firebase.firestore.GeoPoint
 
+
+
 data class BusAndDriver(
     val id: Int,
     val driverName: String,

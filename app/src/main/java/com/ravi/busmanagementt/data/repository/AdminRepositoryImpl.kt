@@ -55,7 +55,6 @@ class AdminRepositoryImpl @Inject constructor(
                         .await()
                 val uid = driverAuth.user?.uid
                 if (uid != null) {
-
                     // ----- Add driver to firestore -----
                     val busDoc = fireStore.collection("buses").document(driver.busId)
                     val busData = mapOf(
@@ -66,6 +65,12 @@ class AdminRepositoryImpl @Inject constructor(
                         "routes" to driver.routes
                     )
                     busDoc.set(busData).await()
+                    val usersDoc = fireStore.collection("users").document(uid)
+                    val userData = mapOf(
+                        "email" to driver.email,
+                        "role" to "driver"
+                    )
+                    usersDoc.set(userData)
                     emit(Resource.Success("Bus added successfully"))
                 } else {
                     emit(Resource.Error("Couldn't create account"))
@@ -105,6 +110,12 @@ class AdminRepositoryImpl @Inject constructor(
                         "assignedBusId" to parent.assignedBusId,
                     )
                     parentDoc.set(parentData).await()
+                    val usersDoc = fireStore.collection("users").document(uid)
+                    val userData = mapOf(
+                        "email" to parent.email,
+                        "role" to "parent"
+                    )
+                    usersDoc.set(userData)
                     emit(Resource.Success("Parent added successfully"))
                 } else {
                     emit(Resource.Error("Couldn't create account"))
@@ -372,12 +383,96 @@ class AdminRepositoryImpl @Inject constructor(
                 Log.d("DirectionsAPI", "Success: Route found!")
                 return decodePolyline(encodedPolyline)
             } else {
-                Log.e("DirectionsAPI", "Error: API returned no routes. Check coordinates and API key.")
+                Log.e(
+                    "DirectionsAPI",
+                    "Error: API returned no routes. Check coordinates and API key."
+                )
             }
         } catch (e: Exception) {
             // This will catch network errors (like HTTP 400) or JSON parsing errors.
             Log.e("DirectionsAPI", "Error fetching directions: ${e.message}", e)
         }
         return emptyList()
+    }
+
+    override suspend fun getBusWithId(busId: String): Flow<Resource<BusAndDriver>> {
+        return flow {
+            emit(Resource.Loading())
+            try {
+                val busDoc = fireStore.collection("buses").document(busId).get().await()
+                if (busDoc.exists()) {
+                    val busDriderId = busDoc.getString("busId") ?: ""
+                    val routesArray = busDoc.get("routes") as? List<Map<String, Any>> ?: emptyList()
+                    val routes = mutableListOf<BusStop>()
+                    if (routesArray != null) {
+                        for (routeMap in routesArray) {
+                            try {
+                                val stopName = routeMap["stopName"] as? String ?: "No Stop Name"
+                                val locationName = routeMap["location"] as? String ?: "N/A"
+                                val coordinates = routeMap["geoPoint"] as? GeoPoint
+                                if (coordinates != null) {
+                                    routes.add(
+                                        BusStop(
+                                            stopName = stopName,
+                                            location = locationName,
+                                            geoPoint = coordinates
+                                        )
+                                    )
+                                }
+                            } catch (e: Exception) {
+                                Log.d(
+                                    "AdminRepositoryImpl",
+                                    "Exception - Error passing routeMap: ${e.message}"
+                                )
+                            }
+                        }
+                    }
+                    val busData = BusAndDriver(
+                        busId = busDriderId,
+                        driverName = busDoc.getString("driverName") ?: "",
+                        email = busDoc.getString("email") ?: "",
+                        id = -1,
+                        password = "",
+                        routes = routes
+                    )
+                    emit(Resource.Success(busData))
+                } else {
+                    emit(Resource.Error("Bus not found"))
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                emit(Resource.Error(e.localizedMessage ?: "Something went wrong"))
+            }
+        }
+    }
+
+    override suspend fun updateBus(busAndDriver: BusAndDriver): Flow<Resource<String>> {
+       return flow{
+           emit(Resource.Loading())
+           if (busAndDriver.busId.isBlank()) {
+               emit(Resource.Error("Bus ID is missing. Cannot update."))
+               return@flow
+           }
+           try {
+               val busDoc = fireStore.collection("buses").document(busAndDriver.busId)
+
+               val updatedBusData = mapOf(
+                   "busId" to busAndDriver.busId,
+                   "email" to busAndDriver.email,
+                   "driverName" to busAndDriver.driverName,
+                   "busName" to busAndDriver.busId,
+                   "routes" to busAndDriver.routes
+               )
+               busDoc.update(updatedBusData).await()
+               emit(Resource.Success("Bus updated successfully"))
+           }catch (e: Exception){
+               e.printStackTrace()
+               emit(Resource.Error(e.localizedMessage ?: "Something went wrong"))
+           }
+       }
+    }
+
+    override suspend fun deleteBus(busId: String): Flow<Resource<String>> {
+        TODO("Not yet implemented")
     }
 }

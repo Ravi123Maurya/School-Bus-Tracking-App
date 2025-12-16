@@ -747,7 +747,7 @@ private fun AddParentDialog(
                             errors = errors.copy(nameError = null)
                         },
                         label = { Text("Parent Name") },
-                        placeholder = { Text("John Doe") },
+                        placeholder = { Text("Ravi Maurya") },
                         leadingIcon = {
                             Icon(Icons.Default.Person, contentDescription = null)
                         },
