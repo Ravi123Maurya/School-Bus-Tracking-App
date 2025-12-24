@@ -15,6 +15,64 @@ import java.util.concurrent.TimeUnit
 import kotlin.time.ExperimentalTime
 
 
+
+fun main() {
+    testEtaCalculation()
+}
+
+fun testEtaCalculation() {
+    // 1. Setup a fake "Now"
+    val now = System.currentTimeMillis()
+
+    // 2. Define a route going North (increasing Latitude)
+    // Roughly 111,000 meters per degree of latitude.
+    // 0.001 degrees is approx 111 meters.
+
+    // Let's simulate a bus moving at approx 11 meters per second (~40km/h)
+    // Point A (30 seconds ago)
+    val p1 = RealtimeLocation(
+        latitude = 19.0000,
+        longitude = 73.0000,
+        timestamp = (now - 30000).toString() // 30 secs ago
+    )
+
+    // Point B (15 seconds ago, moved ~165 meters north)
+    val p2 = RealtimeLocation(
+        latitude = 19.0015,
+        longitude = 73.0000,
+        timestamp = (now - 15000).toString() // 15 secs ago
+    )
+
+    // Point C (Now, moved another ~165 meters north)
+    val p3 = RealtimeLocation(
+        latitude = 19.0030,
+        longitude = 73.0000,
+        timestamp = now.toString() // Now
+    )
+
+    val dummyBusPath = listOf(p1, p2, p3)
+
+    // 3. Define the Stop Location further North
+    // Let's place the stop 0.03 degrees North of current position (p3).
+    // 0.03 deg ~= 3.3 km.
+    // At ~11 m/s, 3300m should take about 300 seconds (5 minutes).
+    val stopLocation = LatLng(19.0330, 73.0000)
+
+    // 4. Run the function
+    val eta = DistanceMatrix.calculateScheduleTimeETA(dummyBusPath, stopLocation)
+
+    println("Calculated ETA: $eta minutes")
+
+    // Verification logic
+    if (eta in 4..6) {
+        println("✅ TEST PASSED: ETA is reasonable (expected ~5 mins)")
+    } else {
+        println("❌ TEST FAILED: ETA $eta is inaccurate (expected ~5 mins)")
+    }
+}
+
+
+
 object TimeMatrix {
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -58,19 +116,19 @@ object DistanceMatrix {
         stopLocation: LatLng
     ): Int {
 
-        Log.d("ETA", "ETA: RTL Size ${realtimeLocations.size} --- StopLocation: $stopLocation")
+//        Log.d("ETA", "ETA: RTL Size ${realtimeLocations.size} --- StopLocation: $stopLocation")
 
         if (realtimeLocations.size < 3){
-            Log.d("ETA", "Returning... RealtimeLocations: ${realtimeLocations.size} is less than 3")
+//            Log.d("ETA", "Returning... RealtimeLocations: ${realtimeLocations.size} is less than 3")
             return 0
         }
 
         val threeMinutesAgo = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(3)
 
-        val recentFilteredLocations = realtimeLocations.filter { it.timestamp.toLong() > threeMinutesAgo }.sortedByDescending { it.timestamp.toLong() }
+        val recentFilteredLocations = realtimeLocations.filter { it.timestamp.toLong() > threeMinutesAgo }.sortedBy { it.timestamp.toLong() }
 
         if (recentFilteredLocations.size < 3){
-            Log.d("ETA", "Returning... Recent Filtered Locations: ${recentFilteredLocations.size} is less than 3")
+//            Log.d("ETA", "Returning... Recent Filtered Locations: ${recentFilteredLocations.size} is less than 3")
             return 0
         }
 
@@ -79,21 +137,22 @@ object DistanceMatrix {
             val point2 = LatLng(b.latitude, b.longitude)
             SphericalUtil.computeDistanceBetween(point1, point2)
         }.sum()
+
         val totalTimeTakenMillis = recentFilteredLocations.last().timestamp.toLong() - recentFilteredLocations.first().timestamp.toLong()
-        Log.d("ETA", "Total Distance: $totalDistanceTravelledInMeters and TotalTimeTaken: $totalTimeTakenMillis")
+//        Log.d("ETA", "Total Distance: $totalDistanceTravelledInMeters and TotalTimeTaken: $totalTimeTakenMillis")
         if(totalTimeTakenMillis <= 0 ){
-            Log.d("ETA", "Returning... TotalTimeTaken: $totalTimeTakenMillis is less than 0 or equal to 0")
-//            return 0
+//            Log.d("ETA", "Returning... TotalTimeTaken: $totalTimeTakenMillis is less than 0 or equal to 0")
+            return 0
         }
 
-        val averageSpeed = totalDistanceTravelledInMeters / totalTimeTakenMillis
-        Log.d("ETA", "Average Speed: $averageSpeed")
+        val averageSpeed = totalDistanceTravelledInMeters / (totalTimeTakenMillis/1000.0)
+//        Log.d("ETA", "Average Speed: $averageSpeed")
         if (averageSpeed < 1.0){
-            Log.d("ETA", "Returning... Average Speed: $averageSpeed is less than 1.0")
-//            return 0
+//            Log.d("ETA", "Returning... Average Speed: $averageSpeed is less than 1.0")
+            return 0
         }
 
-        Log.d("ETA", "All checks passed")
+//        Log.d("ETA", "All checks passed")
         val currentLocationPoint = recentFilteredLocations.last()
         val currentLocation = LatLng(currentLocationPoint.latitude, currentLocationPoint.longitude)
 
@@ -101,8 +160,11 @@ object DistanceMatrix {
 
         val etaInSeconds = distanceToStop / averageSpeed
         Log.d("ETA", "ETA in Seconds: $etaInSeconds returning eta...")
-        return TimeUnit.SECONDS.toMinutes(etaInSeconds.toLong()).toInt()
-
+        val etaMinutes = TimeUnit.SECONDS.toMinutes(etaInSeconds.toLong()).toInt()
+        return if (etaMinutes == 0 && etaInSeconds > 0) 1 else etaMinutes
     }
 
 }
+
+
+

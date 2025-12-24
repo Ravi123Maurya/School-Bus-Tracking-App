@@ -121,9 +121,8 @@ fun AccountTypeScreen(
             navController.navigate(LoginScreen(portal = Portals.DRIVER.name))
         },
         onCaretakerAccountClick = {
-            context.showToast("Coming soon...")
-//            portalViewModel.setPortal(Portals.CARETAKER)
-//            navController.navigate(NavRoutes.LOGIN_SCREEN)
+            portalViewModel.setPortal(Portals.CARETAKER)
+            navController.navigate(LoginScreen(portal = Portals.CARETAKER.name))
         },
         onAdminAccountClick = {
             portalViewModel.setPortal(Portals.ADMIN)

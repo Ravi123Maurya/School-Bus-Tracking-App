@@ -19,4 +19,8 @@ object NavRoutes{
     const val REPORTS_SCREEN = "reports"
 
     const val MAIN_SCREENS = "main"
+
+    /******** Caretaker **********/
+    const val MARK_ATTENDANCE_SCREEN = "mark_attendance"
+    const val VIEW_CHILDREN_SCREEN = "view_children"
 }

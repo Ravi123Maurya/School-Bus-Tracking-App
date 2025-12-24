@@ -95,9 +95,6 @@ fun LoginScreen(
     val context = LocalContext.current
     val authState by authViewModel.loginState.collectAsStateWithLifecycle()
 
-    LaunchedEffect(Unit) {
-        context.showToast("Portal: $portal")
-    }
 
     LaunchedEffect(authState) {
         when (val state = authState) {

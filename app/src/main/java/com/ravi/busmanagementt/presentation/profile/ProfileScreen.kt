@@ -46,6 +46,8 @@ import com.ravi.busmanagementt.domain.model.Parent
 import com.ravi.busmanagementt.presentation.components.CircularLoading
 import com.ravi.busmanagementt.presentation.components.NavBackScaffold
 import com.ravi.busmanagementt.presentation.home.BigButton
+import com.ravi.busmanagementt.presentation.home.HomeScreen
+import com.ravi.busmanagementt.presentation.navigation.HomeScreen
 import com.ravi.busmanagementt.presentation.navigation.NavRoutes
 import com.ravi.busmanagementt.presentation.viewmodels.AuthViewModel
 import com.ravi.busmanagementt.ui.theme.AppColors
@@ -92,7 +94,7 @@ fun ProfileScreen(
                 logoutClick = {
                     authViewModel.logout()
                     navController.navigate(NavRoutes.LOGIN_SCREEN) {
-                        popUpTo(NavRoutes.HOME_SCREEN) {
+                        popUpTo(HomeScreen) {
                             inclusive = true
                         }
                     }

@@ -278,7 +278,7 @@ class AdminRepositoryImpl @Inject constructor(
                     val realtimeLocations = mutableMapOf<String, List<RealtimeLocation>>()
                     for (childSnapshot in snapshot.children) {
                         try {
-                            val busId = childSnapshot.key
+                            val busId = childSnapshot.key ?: continue
                             val locations = childSnapshot.children.mapNotNull { locationSnapshot ->
                                 locationSnapshot.getValue(RealtimeLocation::class.java)
                             }

@@ -90,6 +90,7 @@ import com.ravi.busmanagementt.domain.model.BusStop
 import com.ravi.busmanagementt.presentation.components.AlertDialogBus
 import com.ravi.busmanagementt.presentation.components.InternetConnectionAlertView
 import com.ravi.busmanagementt.presentation.home.admin.AdminPortal
+import com.ravi.busmanagementt.presentation.home.caretaker.CaretakerScreen
 import com.ravi.busmanagementt.presentation.viewmodels.BusViewModel
 import com.ravi.busmanagementt.utils.DistanceMatrix
 import kotlinx.coroutines.launch
@@ -140,23 +141,22 @@ fun HomeScreen(
     ///////////////////////////////////////////////////////////////////////
 
     LaunchedEffect(portal) {
-        if (portal?.value == Portals.ADMIN.value) {
-            mapViewModel.isAdminPortal.value = true
-            mapViewModel.getAllBusesRealtimeLocations()
-        } else {
-            mapViewModel.isAdminPortal.value = false
-        }
+        mapViewModel.setIsAdmin(portal?.value == Portals.ADMIN.value)
+    }
+    LaunchedEffect(stopLocation) {
+        mapViewModel.stopLocation.value = stopLocation
     }
 
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(busStops) {
 
-
+        mapViewModel.busStops.value = busStops
     }
     LaunchedEffect(busId) {
 
         busId?.let {
             mapViewModel.getLocationUpdates(it)
+
         }
     }
     LaunchedEffect(newBusId) {
@@ -171,6 +171,7 @@ fun HomeScreen(
     PermissionHandler(
         MapUtils.permissionToRequest,
         onPermissionGranted = {
+
             HomeScreenContent(
                 hasInternetConnection = hasInternetConnection,
                 portal = portal?.value ?: "No Value",
@@ -194,7 +195,7 @@ fun HomeScreen(
                     hasLogoutClick = true
                 },
                 onStartStopButtonClick = {
-                    if (!hasInternetConnection) {
+                    if (!hasInternetConnection && !isSharingButtonClick) {
                         Toast.makeText(context, "No internet connection", Toast.LENGTH_SHORT).show()
                         return@HomeScreenContent
                     }
@@ -208,6 +209,8 @@ fun HomeScreen(
                 },
                 navController = navController
             )
+
+
         },
         onPermissionDenied = { requestPermissions ->
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -347,36 +350,58 @@ private fun HomeScreenContent(
                     // Only for Driver
                     if (portal == Portals.DRIVER.value) {
                         StartStopButton(
-                            liveLocationPoints.isNullOrEmpty(),
+                            isLocationPointsEmpty = liveLocationPoints.isNullOrEmpty(),
                             sharingState
                         ) { onStartStopButtonClick() }
                     }
 
                     // Bus Live Info - ETA and Remaining Distance
                     if (portal == Portals.PARENT.value)
-                        realtimeLocation?.let {
-                            val busCurrentLocation =
-                                if (it.isEmpty()) parentStopLocation else LatLng(
-                                    it.last().latitude,
-                                    it.last().longitude
+                        realtimeLocation?.let { locations ->
+                            val sortedLocations =
+                                locations.sortedBy { it.timestamp.toLongOrNull() ?: 0L }
+
+                            val busCurrentLocation = if (sortedLocations.isEmpty()) {
+                                parentStopLocation
+                            } else {
+                                LatLng(
+                                    sortedLocations.last().latitude,
+                                    sortedLocations.last().longitude
                                 )
+                            }
+
                             val eta =
-                                if (parentStopLocation == null && busCurrentLocation == null) "0" else DistanceMatrix.calculateScheduleTimeETA(
-                                    realtimeLocations = it,
-                                    stopLocation = parentStopLocation ?: busCurrentLocation!!
-                                ).toString()
-                            BusLiveUpdate(
-                                dis1 = busCurrentLocation,
-                                dis2 = parentStopLocation,
-                                eta = eta
+                                if (parentStopLocation == null || busCurrentLocation == null) {
+                                    "Set your stop"
+                                } else if (sortedLocations.size < 2) {
+                                    // Not enough data to calculate speed yet
+                                    "Calculating..."
+                                } else {
+                                    DistanceMatrix.calculateScheduleTimeETA(
+                                        realtimeLocations = sortedLocations, // Pass the sorted list
+                                        stopLocation = parentStopLocation
+                                    ).toString()
+                                }
+                            Log.d(
+                                "ETA_DEBUG",
+                                "Locations: ${sortedLocations.size}, Start: $busCurrentLocation, Stop: $parentStopLocation, ETA: $eta"
+                            )
+                            BusLiveUpdate (
+                                    dis1 = busCurrentLocation,
+                            dis2 = parentStopLocation,
+                            eta = eta
                             )
                         }
 
                     if (portal == Portals.ADMIN.value) {
                         AdminPortal(navController = navController)
                     }
+                    if (portal == Portals.CARETAKER.value) {
+                        CaretakerScreen(navController = navController)
+                    }
 
-                    if (portal != Portals.ADMIN.value) {
+
+                    if (portal != Portals.ADMIN.value && portal != Portals.CARETAKER.value) {
                         if (busStopPoints != null)
                             BusStopPoints(
                                 stops = busStopPoints,
@@ -387,12 +412,12 @@ private fun HomeScreenContent(
                     // Logout Button todo: Remove logout button
                     BigButton("Logout", icon = Icons.Default.Logout) { logoutClick() }
 
-                    /// DataStore Values
-                    Text("Portal: $portal")
-                    Text("BusId: $busId")
-                    Text("Email: ${email}")
-                    if (portal == Portals.PARENT.value)
-                        Text(realtimeLocation.toString())
+                    /// DataStore Values // todo: Remove
+//                    Text("Portal: $portal")
+//                    Text("BusId: $busId")
+//                    Text("Email: ${email}")
+//                    if (portal == Portals.PARENT.value)
+//                        Text(realtimeLocation.toString())
                 }
             }
 

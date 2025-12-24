@@ -215,7 +215,8 @@ private fun AllBusesContent(
                 ) {
                     items(
                         items = filteredBuses,
-                        key = { it.id }
+                        key = { it.id },
+                         contentType = { "bus_item" }
                     ) { bus ->
                         BusItem(
                             bus = bus,

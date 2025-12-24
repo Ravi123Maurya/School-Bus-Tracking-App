@@ -24,6 +24,8 @@ import com.ravi.busmanagementt.presentation.home.admin.features.busesandroutes.B
 import com.ravi.busmanagementt.presentation.home.admin.features.busesandroutes.EditBusAndStopsScreen
 import com.ravi.busmanagementt.presentation.home.admin.features.manageparents.ManageParentsScreen
 import com.ravi.busmanagementt.presentation.home.admin.features.reports.ReportsScreen
+import com.ravi.busmanagementt.presentation.home.caretaker.MarkAttendanceScreen
+import com.ravi.busmanagementt.presentation.home.caretaker.ViewChildrenScreen
 import com.ravi.busmanagementt.presentation.onboarding.OnboardingScreen
 import com.ravi.busmanagementt.presentation.profile.ProfileScreen
 import com.ravi.busmanagementt.presentation.settings.SettingsScreen
@@ -139,6 +141,15 @@ fun MainNavGraph(
         composable<BusStopsScreen> {
             val args = it.toRoute<BusStopsScreen>()
             BusStopsScreen(navController, mapViewModel, busId = args.busId)
+        }
+
+
+        /******** Caretaker **********/
+        composable(NavRoutes.MARK_ATTENDANCE_SCREEN) {
+            MarkAttendanceScreen(navController)
+        }
+        composable(NavRoutes.VIEW_CHILDREN_SCREEN) {
+            ViewChildrenScreen(navController)
         }
 
     }

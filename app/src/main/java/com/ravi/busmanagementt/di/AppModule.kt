@@ -44,7 +44,7 @@ object FirebaseModule { // Use 'object' for @Provides methods
     @Provides
     @Singleton
     fun provideFirebaseRealtimeDatabase(): FirebaseDatabase {
-        val dbUrl = "https://bus-tacking-system-ca065-default-rtdb.asia-southeast1.firebasedatabase.app"
+        val dbUrl = "https://bustrackapp-loadtest-default-rtdb.asia-southeast1.firebasedatabase.app"
         // This is a perfect use case for @Provides because it needs custom logic (the URL)
         return Firebase.database(dbUrl)
     }

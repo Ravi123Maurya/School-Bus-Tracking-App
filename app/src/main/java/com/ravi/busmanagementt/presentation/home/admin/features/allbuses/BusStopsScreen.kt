@@ -42,7 +42,7 @@ fun BusStopsScreen(
     val realtimeLocations by mapViewModel.realtimeLocationState.collectAsStateWithLifecycle()
 
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(busId) {
         busId?.let {
             mapViewModel.getBusStopsByBusId(it)
             mapViewModel.getLocationUpdates(it)

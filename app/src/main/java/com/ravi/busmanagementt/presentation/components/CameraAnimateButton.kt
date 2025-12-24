@@ -28,7 +28,7 @@ import com.ravi.busmanagementt.utils.showToast
 @Composable
 fun CameraAnimateFaB(
     modifier: Modifier = Modifier,
-    onBusLocationClick: () -> Unit = {},
+    onBusLocationClick: (() -> Unit)? = null,
     onMyLocationClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -39,17 +39,18 @@ fun CameraAnimateFaB(
             .padding(16.dp)
     ) {
 
-
-        FloatingActionButton(
-            onClick = {
-                onBusLocationClick()
-
-            },
-            shape = CircleShape,
-            containerColor = Color.Blue
-        ) {
-            Icon(Icons.Default.DirectionsBus, "Bus Location", tint = Color.White)
+        onBusLocationClick?.let {
+            FloatingActionButton(
+                onClick = {
+                    onBusLocationClick()
+                },
+                shape = CircleShape,
+                containerColor = Color.Blue
+            ) {
+                Icon(Icons.Default.DirectionsBus, "Bus Location", tint = Color.White)
+            }
         }
+
 
         Spacer(Modifier.height(12.dp))
 

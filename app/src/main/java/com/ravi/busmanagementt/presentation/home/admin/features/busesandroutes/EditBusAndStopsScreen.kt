@@ -456,7 +456,8 @@ private fun BusInfoCard(
                 supportingText = errors.busIdError?.let { { Text(it) } },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                readOnly = true
             )
 
             OutlinedTextField(
@@ -490,7 +491,8 @@ private fun BusInfoCard(
                 supportingText = errors.emailError?.let { { Text(it) } },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                readOnly = true
             )
         }
     }

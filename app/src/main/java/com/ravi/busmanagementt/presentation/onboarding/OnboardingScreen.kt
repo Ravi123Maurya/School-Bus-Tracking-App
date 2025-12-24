@@ -69,108 +69,112 @@ fun OnboardingScreen(
     val pagerState = rememberPagerState(pageCount = { pages.size })
     val scope = rememberCoroutineScope()
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFF4A4543))
-    ) {
 
-
-        // Main content card
-        Card(
+    Scaffold { innerPadding ->
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight()
-//                .padding(horizontal = 24.dp, vertical = 48.dp)
-                .align(Alignment.Center),
-            shape = RoundedCornerShape(0.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = pages[pagerState.currentPage].backgroundColor
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                .padding(innerPadding)
+                .fillMaxSize()
+                .background(Color(0xFF4A4543))
         ) {
-            Column(
+
+            // Main content card
+            Card(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .fillMaxWidth()
+                    .fillMaxHeight()
+//                .padding(horizontal = 24.dp, vertical = 48.dp)
+                    .align(Alignment.Center),
+                shape = RoundedCornerShape(0.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = pages[pagerState.currentPage].backgroundColor
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
-                // Pager content
-                HorizontalPager(
-                    state = pagerState,
-                    modifier = Modifier.weight(1f)
-                ) { page ->
-                    OnboardingPageContent(
-                        page = pages[page]
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Page indicators
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(bottom = 32.dp)
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    repeat(pages.size) { index ->
-                        PageIndicatorAnimated(
-                            isActive = pagerState.currentPage == index
+                    // Pager content
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier.weight(1f)
+                    ) { page ->
+                        OnboardingPageContent(
+                            page = pages[page]
                         )
                     }
-                }
 
-                // Bottom buttons
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Skip button
-                    TextButton(
-                        onClick = onComplete,
-                        modifier = Modifier.padding(start = 8.dp)
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // Page indicators
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(bottom = 32.dp)
                     ) {
-                        Text(
-                            text = "SKIP",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Black.copy(alpha = 0.6f),
-                            letterSpacing = 1.sp
-                        )
+                        repeat(pages.size) { index ->
+                            PageIndicatorAnimated(
+                                isActive = pagerState.currentPage == index
+                            )
+                        }
                     }
 
-                    // Next/Start button
-                    Button(
-                        onClick = {
-                            if (pagerState.currentPage == pages.size - 1) {
-                                onComplete()
-                            } else {
-                                scope.launch {
-                                    pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                    // Bottom buttons
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Skip button
+                        TextButton(
+                            onClick = onComplete,
+                            modifier = Modifier.padding(start = 8.dp)
+                        ) {
+                            Text(
+                                text = "SKIP",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Black.copy(alpha = 0.6f),
+                                letterSpacing = 1.sp
+                            )
+                        }
+
+                        // Next/Start button
+                        Button(
+                            onClick = {
+                                if (pagerState.currentPage == pages.size - 1) {
+                                    onComplete()
+                                } else {
+                                    scope.launch {
+                                        pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                                    }
                                 }
-                            }
-                        },
-                        modifier = Modifier
-                            .width(140.dp)
-                            .height(56.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.Black
-                        ),
-                        shape = RoundedCornerShape(28.dp)
-                    ) {
-                        Text(
-                            text = if (pagerState.currentPage == pages.size - 1) "START" else "NEXT",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            letterSpacing = 1.sp
-                        )
+                            },
+                            modifier = Modifier
+                                .width(140.dp)
+                                .height(56.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.Black
+                            ),
+                            shape = RoundedCornerShape(28.dp)
+                        ) {
+                            Text(
+                                text = if (pagerState.currentPage == pages.size - 1) "START" else "NEXT",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                letterSpacing = 1.sp
+                            )
+                        }
                     }
                 }
             }
         }
     }
+
 }
 
 @Composable
