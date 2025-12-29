@@ -5,7 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -32,11 +31,11 @@ import com.ravi.busmanagementt.domain.model.BusStop
 import com.ravi.busmanagementt.presentation.components.CircularLoading
 import com.ravi.busmanagementt.presentation.components.NavBackScaffold
 import com.ravi.busmanagementt.presentation.home.admin.features.allbuses.AllBusesViewModel
-import com.ravi.busmanagementt.presentation.home.admin.features.allbuses.Bus
 import com.ravi.busmanagementt.presentation.home.admin.features.allbuses.GetAllBusesState
 import com.ravi.busmanagementt.presentation.navigation.EditBusAndStopsScreen
 import com.ravi.busmanagementt.presentation.navigation.NavRoutes
 import com.ravi.busmanagementt.ui.theme.AppColors
+import com.ravi.busmanagementt.utils.Resource
 import com.ravi.busmanagementt.utils.showToast
 
 // Main Screen
@@ -47,25 +46,19 @@ fun BusesAndRoutesScreen(
 ) {
 
     val context = LocalContext.current
-    val allBusesWithLiveStatus by allBusesViewModel.busesWithStatus.collectAsStateWithLifecycle()
+    val busesAndRoutes by allBusesViewModel.busesAndRoutesFlow.collectAsStateWithLifecycle()
     var allBuses by remember { mutableStateOf(emptyList<BusAndDriver>()) }
     var isFetching by remember { mutableStateOf(false) }
 
-    LaunchedEffect(allBusesWithLiveStatus) {
-        when (val state = allBusesWithLiveStatus) {
-            is GetAllBusesState.Error -> {
-                context.showToast(state.message)
+    LaunchedEffect(busesAndRoutes) {
+        when (val state = busesAndRoutes) {
+            is Resource.Error -> {
+                context.showToast(state.message ?: "Unknown error")
                 isFetching = false
             }
-
-            GetAllBusesState.Loading -> {
-                isFetching = true
-            }
-
-            is GetAllBusesState.Success -> {
-                allBuses = state.buses.map { busDetailWithStatus ->
-                    busDetailWithStatus.busDetail
-                }
+            is Resource.Loading -> { isFetching = true}
+            is Resource.Success<*> -> {
+                allBuses = state.data ?: emptyList()
                 isFetching = false
             }
         }
@@ -121,7 +114,7 @@ private fun BusesAndRoutesContent(
 
     var searchQuery by remember { mutableStateOf("") }
     var showDeleteDialog by remember { mutableStateOf<BusAndDriver?>(null) }
-    var expandedBusId by remember { mutableStateOf<Int?>(null) }
+    var expandedBusId by remember { mutableStateOf<String?>(null) }
 
     val filteredBuses = remember(busesWithDrivers, searchQuery) {
         busesWithDrivers.filter { bus ->
@@ -158,13 +151,13 @@ private fun BusesAndRoutesContent(
             ) {
                 itemsIndexed(
                     items = filteredBuses,
-                    key = { i, data -> "$i-${data.busId}" }
+                    key = { i, data -> data.busId }
                 ) { i, bus ->
                     BusWithRoutesCard(
                         bus = bus,
-                        isExpanded = expandedBusId == i,
+                        isExpanded = expandedBusId == bus.busId,
                         onExpandClick = {
-                            expandedBusId = if (expandedBusId == i) null else i
+                            expandedBusId = if (expandedBusId == bus.busId) null else bus.busId
                         },
                         onEditClick = { onEditClick(bus.busId) },
                         onDeleteClick = {

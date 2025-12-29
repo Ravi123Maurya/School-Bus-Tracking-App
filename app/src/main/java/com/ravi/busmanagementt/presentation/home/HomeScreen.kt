@@ -122,10 +122,12 @@ fun HomeScreen(
     val hasInternetConnection by mapViewModel.hasInternetConnection.collectAsStateWithLifecycle()
     var isSharingButtonClick by remember { mutableStateOf(false) }
     var hasLogoutClick by remember { mutableStateOf(false) }
+    val busEta by mapViewModel.eta.collectAsStateWithLifecycle()
+    val remainingDistance by mapViewModel.remainingDistance.collectAsStateWithLifecycle()
 
 
     //////////////// -------- Map Content ---------- //////////////////////////////
-    val mapContent by mapViewModel.mapContent.collectAsStateWithLifecycle()
+    val mapContent = mapViewModel.mapContent
     val mapPlaceholder: @Composable () -> Unit = {
         Box(
             modifier = Modifier
@@ -176,6 +178,8 @@ fun HomeScreen(
                 hasInternetConnection = hasInternetConnection,
                 portal = portal?.value ?: "No Value",
                 busId = busId,
+                busEta = busEta, // Parent only
+                remainingDistance = remainingDistance, // Parent only
                 email = authViewModel.email ?: "No Email",
                 sharingState = sharingLocationState,
                 isMapExpanded = mapViewState.isMapExpanded,
@@ -268,6 +272,8 @@ private fun HomeScreenContent(
     hasInternetConnection: Boolean,
     portal: String,
     busId: String? = null,
+    busEta: String,
+    remainingDistance: String,
     email: String,
     sharingState: LocationSharingState,
     isMapExpanded: Boolean,
@@ -356,42 +362,14 @@ private fun HomeScreenContent(
                     }
 
                     // Bus Live Info - ETA and Remaining Distance
-                    if (portal == Portals.PARENT.value)
-                        realtimeLocation?.let { locations ->
-                            val sortedLocations =
-                                locations.sortedBy { it.timestamp.toLongOrNull() ?: 0L }
+                    if (portal == Portals.PARENT.value) {
+                        BusLiveUpdate(
+                            eta = busEta,
+                            remainingDistance = remainingDistance
+                        )
+                    }
 
-                            val busCurrentLocation = if (sortedLocations.isEmpty()) {
-                                parentStopLocation
-                            } else {
-                                LatLng(
-                                    sortedLocations.last().latitude,
-                                    sortedLocations.last().longitude
-                                )
-                            }
 
-                            val eta =
-                                if (parentStopLocation == null || busCurrentLocation == null) {
-                                    "Set your stop"
-                                } else if (sortedLocations.size < 2) {
-                                    // Not enough data to calculate speed yet
-                                    "Calculating..."
-                                } else {
-                                    DistanceMatrix.calculateScheduleTimeETA(
-                                        realtimeLocations = sortedLocations, // Pass the sorted list
-                                        stopLocation = parentStopLocation
-                                    ).toString()
-                                }
-                            Log.d(
-                                "ETA_DEBUG",
-                                "Locations: ${sortedLocations.size}, Start: $busCurrentLocation, Stop: $parentStopLocation, ETA: $eta"
-                            )
-                            BusLiveUpdate (
-                                    dis1 = busCurrentLocation,
-                            dis2 = parentStopLocation,
-                            eta = eta
-                            )
-                        }
 
                     if (portal == Portals.ADMIN.value) {
                         AdminPortal(navController = navController)
@@ -508,18 +486,9 @@ fun BusLiveInfoCard(
 
 @Composable
 fun BusLiveUpdate(
-    dis1: LatLng?,
-    dis2: LatLng?,
-    eta: String = "12"
+    eta: String,
+    remainingDistance: String
 ) {
-
-    var distance by remember { mutableStateOf("0 km") }
-
-    LaunchedEffect(dis1, dis2) {
-        if (dis1 == null || dis2 == null) return@LaunchedEffect
-        distance = (SphericalUtil.computeDistanceBetween(dis1, dis2)
-            .roundToInt() / 1000f).toString() + " km"
-    }
 
     Card(
         colors = CardDefaults.outlinedCardColors(
@@ -541,8 +510,8 @@ fun BusLiveUpdate(
                 LivePulseIndicator(size = 32.dp, color = AppColors.OnPurpleBlue)
             }
             Spacer(Modifier.height(12.dp))
-            InfoRow(label = "Estimated Time", "$eta mins")
-            InfoRow(label = "Remaining Distance", distance)
+            InfoRow(label = "Estimated Time", "$eta")
+            InfoRow(label = "Remaining Distance", remainingDistance)
         }
 
     }

@@ -620,8 +620,8 @@ private fun AddRouteDialog(
                             BusStop(
                                 stopName = routeStopForm.stopName,
                                 location = routeStopForm.location,
-                                GeoPoint(
-                                    routeStopForm.latitude.toDouble(),
+                                geoPoint = GeoPoint(
+                                     routeStopForm.latitude.toDouble(),
                                     routeStopForm.longitude.toDouble()
                                 )
                             )

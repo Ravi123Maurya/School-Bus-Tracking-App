@@ -41,7 +41,7 @@ import com.ravi.busmanagementt.utils.showToast
 
 // Edit State
 data class EditBusState(
-    val busId: String = "",
+    val busId: String = "", // Todo: BusId and Email cannot be changed (TextField is read-only, disabled, editable in future if needed)
     val driverName: String = "",
     val email: String = "",
     val routes: List<BusStop> = emptyList()
@@ -75,7 +75,6 @@ fun EditBusAndStopsScreen(
     var updatedBusData by remember { mutableStateOf<BusAndDriver?>(null) }
 
 
-
     // Get Bus Data State
     LaunchedEffect(busDataState) {
         when (val state = busDataState) {
@@ -102,6 +101,7 @@ fun EditBusAndStopsScreen(
                 context.showToast(state.message)
                 editViewModel.resetAllStates()
             }
+
             UpdateBusDataState.Idle -> {}
             UpdateBusDataState.Loading -> {}
             is UpdateBusDataState.Success -> {
@@ -324,16 +324,17 @@ private fun EditBusAndStopsContent(
     }
 
 
+    // Todo : Save Button is not enabling after filling form
     // Add Stop Dialog
     if (showAddStopDialog) {
         AddEditStopDialog(
             stop = null,
             onDismiss = { showAddStopDialog = false },
             onSave = { newStop ->
-                if(editState.routes.contains(newStop)){
-                    context.showToast( "Stop already exists")
+                if (editState.routes.contains(newStop)) {
+                    context.showToast("Stop already exists")
                     return@AddEditStopDialog
-                }else{
+                } else {
                     editState = editState.copy(
                         routes = editState.routes + newStop
                     )
@@ -344,6 +345,7 @@ private fun EditBusAndStopsContent(
         )
     }
 
+    // Todo: Geopoints aren't showing changed in edit screen
     // Edit Stop Dialog
     editingStopIndex?.let { index ->
         AddEditStopDialog(
@@ -444,6 +446,9 @@ private fun BusInfoCard(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+
+            /*** Bus Information ***/
+            // Bus Id
             OutlinedTextField(
                 value = busId,
                 onValueChange = onBusIdChange,
@@ -457,9 +462,16 @@ private fun BusInfoCard(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
-                readOnly = true
+                readOnly = true,
+                enabled = false
             )
-
+            Text(
+                text = "Bus ID cannot be changed",
+                fontSize = 12.sp,
+                color = Color.Gray,
+                modifier = Modifier.padding(start = 4.dp)
+            )
+            // Driver Name
             OutlinedTextField(
                 value = driverName,
                 onValueChange = onDriverNameChange,
@@ -474,7 +486,7 @@ private fun BusInfoCard(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
             )
-
+            // Email
             OutlinedTextField(
                 value = email,
                 onValueChange = onEmailChange,
@@ -492,7 +504,14 @@ private fun BusInfoCard(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
-                readOnly = true
+                readOnly = true,
+                enabled = false
+            )
+            Text(
+                text = "Email cannot be changed",
+                fontSize = 12.sp,
+                color = Color.Gray,
+                modifier = Modifier.padding(start = 4.dp)
             )
         }
     }
@@ -689,7 +708,22 @@ private fun AddEditStopDialog(
     var latitude by remember { mutableStateOf(stop?.geoPoint?.latitude?.toString() ?: "") }
     var longitude by remember { mutableStateOf(stop?.geoPoint?.longitude?.toString() ?: "") }
 
-    var routeStopForm by remember { mutableStateOf(RouteStopForm()) }
+    val isFormValid = remember(stopName, location, latitude, longitude) {
+        stopName.isNotBlank() &&
+                location.isNotBlank() &&
+                latitude.toDoubleOrNull() != null &&
+                longitude.toDoubleOrNull() != null
+    }
+    var routeStopForm by remember {
+        mutableStateOf(
+            RouteStopForm(
+                stopName = stopName,
+                location = location,
+                latitude = latitude,
+                longitude = longitude
+            )
+        )
+    }
     var routeStopErrors by remember { mutableStateOf(RouteStopForErrors()) }
 
 
@@ -798,15 +832,21 @@ private fun AddEditStopDialog(
                     val validationErrors = validateRouteStop(routeStopForm)
                     if (validationErrors.hasErrors()) {
                         routeStopErrors = validationErrors
-                    }else{
+                    } else {
                         val lat = routeStopForm.latitude.toDouble()
                         val lng = routeStopForm.longitude.toDouble()
-                        onSave(BusStop(routeStopForm.stopName, routeStopForm.location, GeoPoint(lat, lng)))
+                        onSave(
+                            BusStop(
+                                stopName = routeStopForm.stopName,
+                                location = routeStopForm.location,
+                                geoPoint = GeoPoint(lat, lng)
+                            )
+                        )
                     }
 
 
                 },
-                enabled = stopName.isNotBlank(),
+                enabled = true,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = AppColors.Primary
                 )

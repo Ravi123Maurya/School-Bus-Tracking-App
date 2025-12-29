@@ -9,10 +9,13 @@ import com.ravi.busmanagementt.domain.model.BusAndDriver
 import com.ravi.busmanagementt.domain.repository.AdminRepository
 import com.ravi.busmanagementt.utils.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.sample
@@ -38,6 +41,8 @@ class AllBusesViewModel @Inject constructor(
         .onStart { emit(emptyMap()) }
 
     private val allBusesRealtimeLocationsFlow = adminRepository.getRealtimeLocationsOfAllBuses()
+        .flowOn(Dispatchers.IO)
+        .conflate()
         .onEach { Log.d("DEBUG_FLOW", "Locations Flow Emitted: ${it.keys.size}") }
         .onStart { emit(emptyMap()) }
 
@@ -78,6 +83,14 @@ class AllBusesViewModel @Inject constructor(
                 started = SharingStarted.WhileSubscribed(5000),
                 initialValue = GetAllBusesState.Loading
             )
+
+
+    val busesAndRoutesFlow: StateFlow<Resource<List<BusAndDriver>>> = allBusesFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = Resource.Loading()
+        )
 
 
 }

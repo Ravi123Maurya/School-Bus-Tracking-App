@@ -18,6 +18,7 @@ class MapState(
     var isMapInitialized by mutableStateOf(false)
 
     fun animateCamera(position: LatLng, zoom: Float = 17f) {
+
         if (!cameraPositionState.isMoving){
             coroutineScope.launch {
                 try {

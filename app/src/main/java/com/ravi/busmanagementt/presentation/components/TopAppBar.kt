@@ -79,11 +79,11 @@ fun BusTopAppBar(
         ),
         actions = {
 
-            TopBarAction(icon = Icons.Default.NotificationsNone, true, onClick = {
-                context.showToast("Coming soon...")
-                onNotificationClick()
-            })
-            Spacer(Modifier.width(12.dp))
+//            TopBarAction(icon = Icons.Default.NotificationsNone, true, onClick = {
+//                context.showToast("Coming soon...")
+//                onNotificationClick()
+//            })
+//            Spacer(Modifier.width(12.dp))
 
             if (isParentPortal)
             TopBarAction(icon = Icons.Default.DensityMedium, onClick = onSettingClick)

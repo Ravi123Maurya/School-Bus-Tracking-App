@@ -67,6 +67,11 @@ import com.ravi.busmanagementt.domain.model.BusStop
 import com.ravi.busmanagementt.presentation.components.CameraAnimateFaB
 import com.ravi.busmanagementt.ui.theme.AppColors
 import com.ravi.busmanagementt.utils.showToast
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.pow
+import kotlin.math.sin
+import kotlin.math.sqrt
 
 
 @Composable
@@ -82,12 +87,14 @@ fun LiveBusMap(
     liveLocationPoints: List<LatLng>? = null,
     busRouteLatLng: List<LatLng>? = null,
     busStops: List<BusStop>? = null,
-    allBusesLiveLocations: Map<String, List<RealtimeLocation>>? = null,
+    allBusesCurrentLocations: Map<String, RealtimeLocation?>? = null,
+    selectedBusPath: List<LatLng>? = null,
     allBusesRoutesLatLng: Map<String, List<LatLng>>? = null,
     allBusesStopsLatLng: Map<String, List<BusStop>>? = null,
     focusToBus: String? = null,
     onExpandClick: () -> Unit,
-    onMapLoaded: () -> Unit = {}
+    onMapLoaded: () -> Unit = {},
+    onBusSelected: (String) -> Unit = {}
 ) {
 
     val context = LocalContext.current
@@ -140,37 +147,37 @@ fun LiveBusMap(
     var animateBusLatLng by remember { mutableStateOf<LatLng?>(null) }
     LaunchedEffect(animateBusLatLng) {
         animateBusLatLng?.let {
-            mapState.animateCamera(it, zoom = 24f)
+            mapState.animateCamera(it, zoom = 12f)
         }
     }
 
     var selectedBusId by remember { mutableStateOf<String?>(null) }
+    var isBusListExpanded by remember { mutableStateOf(false) }
     var selectedBusLatLng by remember { mutableStateOf<LatLng?>(null) }
-    val zoomLevel = mapState.cameraPositionState.position.zoom
-    val showDetails = zoomLevel > 12f
 
-    LaunchedEffect(allBusesLiveLocations, focusToBus) {
-        if (focusToBus != null && allBusesLiveLocations != null) {
-            val targetBus = allBusesLiveLocations[focusToBus]
-            if (!targetBus.isNullOrEmpty()) {
-                val lastLocation = targetBus.last()
-                animateBusLatLng = LatLng(lastLocation.latitude, lastLocation.longitude)
-            }
-        }
-        if (selectedBusId == null && !allBusesLiveLocations.isNullOrEmpty()) {
-            // Pick the first busID from the map keys
-            val firstBusId = allBusesLiveLocations.keys.firstOrNull()
-            if (firstBusId != null) {
-                selectedBusId = firstBusId
+    LaunchedEffect(focusToBus) {
+        if (focusToBus != null) {
+            selectedBusId = focusToBus// Also animate camera if needed
+            allBusesCurrentLocations?.get(focusToBus)?.let { loc ->
+                selectedBusLatLng = LatLng(loc.latitude, loc.longitude)
             }
         }
     }
-    LaunchedEffect(selectedBusId, allBusesLiveLocations) {
-        if (selectedBusId != null && allBusesLiveLocations != null) {
-            val locations = allBusesLiveLocations[selectedBusId]
-            if (!locations.isNullOrEmpty()) {
-                val last = locations.last()
-                selectedBusLatLng = LatLng(last.latitude, last.longitude)
+
+    LaunchedEffect(allBusesCurrentLocations, focusToBus) {
+        if (focusToBus != null && allBusesCurrentLocations != null) {
+            val targetBus = allBusesCurrentLocations[focusToBus]
+            if (targetBus != null) {
+                animateBusLatLng = LatLng(targetBus.latitude, targetBus.longitude)
+            }
+        }
+    }
+    LaunchedEffect(selectedBusId, allBusesCurrentLocations) {
+        if (selectedBusId != null && allBusesCurrentLocations != null) {
+            val location = allBusesCurrentLocations[selectedBusId]
+            if (location != null) {
+
+                selectedBusLatLng = LatLng(location.latitude, location.longitude)
             }
         }
     }
@@ -190,9 +197,11 @@ fun LiveBusMap(
             properties = mapProperties,
             onMapLoaded = {
                 onMapLoaded()
+            },
+            onMapClick = {
+                isBusListExpanded = false
             }
         ) {
-
 
             // Bus Marker: Source and Current Location (Parent and Driver)
             liveLocationPoints?.let { points ->
@@ -280,74 +289,96 @@ fun LiveBusMap(
             /**
              * --------- ADMIN --------
              **/
-            // All Buses Markers - For Admin only
-            allBusesLiveLocations?.let { buses ->
-                var index = 0
-                buses.forEach { (busId, liveLocations) ->
-                    index++
-                    if (busId == selectedBusId) {
-                        liveLocations.let { location ->
-                            if (location.isNotEmpty()) {
-                                val firstLocation = location.first()
-                                val latLng = LatLng(firstLocation.latitude, firstLocation.longitude)
 
-                                MarkerComposable(
-                                    state = rememberUpdatedMarkerState(latLng),
-                                    title = "$busId",
-                                    snippet = "Starting point"
-                                ) {
-                                    BusStartLocationMarker(index)
-                                }
+            if (selectedBusId != null) {
 
+                val zoomLvl = mapState.cameraPositionState.position.zoom
+                val cameraTarget = mapState.cameraPositionState.position.target
+                val closestBusId = remember(cameraTarget, zoomLvl) {
+                    if (zoomLvl < 15f) return@remember null
+                    var nearestId: String? = null
+                    var minDistance = Double.MAX_VALUE
 
-                                if (location.size > 1) {
-                                    val lastLocation = location.last()
-                                    val latLng2 =
-                                        LatLng(lastLocation.latitude, lastLocation.longitude)
-                                    selectedBusLatLng = latLng2
-                                    Marker(
-                                        state = rememberUpdatedMarkerState(latLng2),
-                                        title = busId,
-                                        icon = busMarkerIcon,
-                                        anchor = Offset(0.5f, 0.5f),
-                                        snippet = "Current location",
-                                        onClick = {
-                                            selectedBusId = busId
-                                            false
-                                        }
-                                    )
+                    allBusesCurrentLocations?.forEach { (busId, location) ->
+                        if (location != null) {
 
-                                }
+                            val dist = calculateDistance(
+                                cameraTarget.latitude,
+                                cameraTarget.longitude,
+                                location.latitude,
+                                location.longitude
+                            )
+
+                            if (dist < 500 && dist < minDistance) {
+                                minDistance = dist
+                                nearestId = busId
                             }
                         }
                     }
-
+                    nearestId
                 }
-            }
+                allBusesCurrentLocations?.forEach { (busId, location) ->
+                    key(busId) {
+                        if (location != null) {
+                            val latLng = LatLng(location.latitude, location.longitude)
 
-            // All Buses Live Paths - For Admin only
-            if (selectedBusId != null) {
-                allBusesLiveLocations?.let { buses ->
-                    buses.forEach { (busId, liveLocations) ->
-                        if (busId == selectedBusId) {
-                            val points = liveLocations.map { LatLng(it.latitude, it.longitude) }
-                            Polyline(
-                                points = points,
-                                color = AppColors.Primary,
-                                width = 16f,
-                                startCap = ButtCap()
+                            // Check if this is the selected bus to change Z-index or color
+                            val isSelected = (focusToBus == busId)
+                            val isClosest = (closestBusId == busId)
+                            val shouldShowInfo = isSelected || (isClosest && zoomLvl >= 15f)
+
+                            val markerState = rememberUpdatedMarkerState(latLng)
+                            LaunchedEffect(shouldShowInfo) {
+                                if (shouldShowInfo) {
+                                    markerState.showInfoWindow()
+                                } else {
+                                    markerState.hideInfoWindow()
+                                }
+                            }
+
+                            Marker(
+                                state = markerState,
+                                title = busId,
+                                icon = busMarkerIcon,
+                                anchor = Offset(0.5f, 0.5f),
+                                onClick = {
+                                    onBusSelected(busId)
+                                    false
+                                },
+                                zIndex = if (isSelected || isClosest) 2f else 1f
                             )
                         }
-
                     }
                 }
-            }
 
-            // Buses Routes Path (Admin)
-            allBusesRoutesLatLng?.forEach { (busId, busRoute) ->
-                if (busId == selectedBusId) {
+                // 2. Draw Heavy live Path (Only for ONE bus)
+                if (!selectedBusPath.isNullOrEmpty()) {
+
+                    // Draw Line
                     Polyline(
-                        points = busRoute,
+                        points = selectedBusPath,
+                        color = AppColors.Primary,
+                        width = 16f,
+                        startCap = ButtCap(),
+                        jointType = JointType.ROUND
+                    )
+
+                    // Draw Start Marker
+                    val start = selectedBusPath.first()
+                    MarkerComposable(
+                        state = rememberUpdatedMarkerState(start),
+                        title = "Start",
+                        zIndex = 0.5f
+                    ) {
+                        BusStartLocationMarker(1)
+                    }
+                }
+
+                // Buses Routes Path (Admin)
+                val selectedBusRoute = allBusesRoutesLatLng?.get(selectedBusId)
+                if (selectedBusRoute != null) {
+                    Polyline(
+                        points = selectedBusRoute,
                         color = Color.Red.copy(alpha = 0.5f),
                         width = 16f,
                         startCap = ButtCap(),
@@ -355,7 +386,7 @@ fun LiveBusMap(
                         jointType = JointType.ROUND
                     )
                     Polyline(
-                        points = busRoute,
+                        points = selectedBusRoute,
                         color = Color.White,
                         width = 6f,
                         startCap = ButtCap(),
@@ -364,28 +395,25 @@ fun LiveBusMap(
                     )
                 }
 
-            }
-
-            // Buses Stops (Admin)
-            allBusesStopsLatLng?.let { busesStopsMap ->
-                busesStopsMap.forEach { (busId, stops) ->
-                    if (busId == selectedBusId) {
-                        if (stops.isNotEmpty()) {
-                            stops.forEachIndexed { i, point ->
-                                val latLng =
-                                    LatLng(point.geoPoint.latitude, point.geoPoint.longitude)
-                                MarkerComposable(
-                                    state = rememberUpdatedMarkerState(latLng),
-                                    title = "Stop ${i + 1}",
-                                    snippet = point.stopName
-                                ) {
-                                    BusStopLocationsMarker()
-                                }
+                // Buses Stops (Admin)
+                val selectedBusStop = allBusesStopsLatLng?.get(selectedBusId)
+                if (selectedBusStop != null) {
+                    if (selectedBusStop.isNotEmpty()) {
+                        selectedBusStop.forEachIndexed { i, point ->
+                            val latLng =
+                                LatLng(point.geoPoint.latitude, point.geoPoint.longitude)
+                            MarkerComposable(
+                                state = rememberUpdatedMarkerState(latLng),
+                                title = "Stop ${i + 1}",
+                                snippet = point.stopName
+                            ) {
+                                BusStopLocationsMarker()
                             }
                         }
                     }
-
                 }
+
+
             }
 
 
@@ -421,22 +449,16 @@ fun LiveBusMap(
 
             if (isAdminPortal) {
 
-                var selectedBus: String? = null
-
-                try {
-                    selectedBus =
-                        if (selectedBusId == null) allBusesRoutesLatLng?.keys?.toList()?.first()
-                            ?: "Select Bus" else selectedBusId
-                    selectedBusLatLng = allBusesRoutesLatLng?.values?.toList()?.first()?.first()
-                } catch (e: Exception) {
-
-                }
                 BusesList(
                     modifier = Modifier.align(Alignment.TopEnd),
-                    selectedBusId = selectedBus ?: "Select Bus",
+                    isExpanded = isBusListExpanded,
+                    selectedBusId = selectedBusId ?: "Select Bus",
                     listOfBuses = allBusesRoutesLatLng?.keys?.toList() ?: emptyList(),
+                    onBusListClick = { isBusListExpanded = true },
                     onBusClick = { busId ->
                         selectedBusId = busId
+                        onBusSelected(busId)
+                        isBusListExpanded = false
                     }
                 )
             }
@@ -606,12 +628,14 @@ private fun BusStopLocationsMarker() {
 @Composable
 private fun BusesList(
     modifier: Modifier = Modifier,
+    isExpanded: Boolean = false,
     selectedBusId: String = "Bus_4001",
     listOfBuses: List<String> = emptyList(),
+    onBusListClick: () -> Unit = {},
     onBusClick: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
-    var isExpanded by remember { mutableStateOf(false) }
+
 
     Card(
         modifier = modifier
@@ -629,7 +653,7 @@ private fun BusesList(
                 modifier = Modifier
                     .clickable {
                         if (listOfBuses.isNotEmpty()) {
-                            isExpanded = true
+                            onBusListClick()
                         } else {
                             context.showToast("Loading...")
                         }
@@ -645,7 +669,6 @@ private fun BusesList(
                         modifier = Modifier
                             .clickable {
                                 onBusClick(bus)
-                                isExpanded = false
                             }
                             .padding(8.dp)
                     ) {
@@ -657,3 +680,12 @@ private fun BusesList(
     }
 }
 
+// Haversine formula to calculate distance in meters
+fun calculateDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+    val r = 6371000.0 // Earth radius in meters
+    val dLat = Math.toRadians(lat2 - lat1)
+    val dLon = Math.toRadians(lon2 - lon1)
+    val a = sin(dLat / 2).pow(2) + cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) * sin(dLon / 2).pow(2)
+    val c = 2 * atan2(sqrt(a), sqrt(1.0 - a))
+    return r * c
+}

@@ -272,39 +272,58 @@ class AdminRepositoryImpl @Inject constructor(
 
     override fun getRealtimeLocationsOfAllBuses(): Flow<Map<String, List<RealtimeLocation>>> {
         return callbackFlow {
-            val snapshot = realtimeDb.getReference("liveLocations")
-            val valueEventListener = object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    val realtimeLocations = mutableMapOf<String, List<RealtimeLocation>>()
-                    for (childSnapshot in snapshot.children) {
-                        try {
-                            val busId = childSnapshot.key ?: continue
-                            val locations = childSnapshot.children.mapNotNull { locationSnapshot ->
-                                locationSnapshot.getValue(RealtimeLocation::class.java)
-                            }
-                            if (busId != null && locations.isNotEmpty()) {
-                                realtimeLocations[busId] = locations
-                            }
-                        } catch (e: Exception) {
-                            Log.d("AdminRepositoryImpl", "Exception: ${e.message}")
-                        }
-                    }
-                    trySend(realtimeLocations)
-                    if (realtimeLocations.isEmpty()) {
-                        close()
-                    }
+            val rootRef = realtimeDb.getReference("liveLocations")
+            val localCache = mutableMapOf<String, MutableList<RealtimeLocation>>()
 
+            // 1. Initial Load (Get current state once)
+            // This might take a moment, but it's done only once.
+            rootRef.get().addOnSuccessListener { snapshot ->
+                snapshot.children.forEach { busSnapshot ->
+                    val busId = busSnapshot.key ?: return@forEach
+                    val locations = busSnapshot.children.mapNotNull {
+                        it.getValue(RealtimeLocation::class.java)
+                    }.toMutableList()
+                    localCache[busId] = locations
                 }
+                // Emit initial state
+                trySend(localCache.toMap())
 
-                override fun onCancelled(error: DatabaseError) {
-                    close(error.toException())
-                }
+            }.addOnFailureListener {
+                close(it)
             }
 
-            snapshot.addValueEventListener(valueEventListener)
-            awaitClose {
-                snapshot.removeEventListener(valueEventListener)
+            val childEventListener = object : com.google.firebase.database.ChildEventListener {
+                override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
+                    // Logic handles new buses appearing
+                    val busId = snapshot.key ?: return
+                    if (localCache.containsKey(busId)) return
+
+                    val list = snapshot.children.mapNotNull { it.getValue(RealtimeLocation::class.java) }.toMutableList()
+                    synchronized(localCache) {
+                        localCache[busId] = list
+                        trySend(localCache.toMap())
+                    }
+                }
+
+                override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
+                    // Logic handles existing bus updates
+                    val busId = snapshot.key ?: return
+                    // Still downloads full list of THIS bus, but avoids the other 49.
+                    val list = snapshot.children.mapNotNull { it.getValue(RealtimeLocation::class.java) }.toMutableList()
+
+                    synchronized(localCache) {
+                        localCache[busId] = list
+                        trySend(localCache.toMap())
+                    }
+                }
+
+                override fun onChildRemoved(snapshot: DataSnapshot) {}
+                override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
+                override fun onCancelled(error: DatabaseError) { close(error.toException()) }
             }
+
+            rootRef.addChildEventListener(childEventListener)
+            awaitClose { rootRef.removeEventListener(childEventListener) }
         }
     }
 
