@@ -343,6 +343,7 @@ fun LiveBusMap(
                                 anchor = Offset(0.5f, 0.5f),
                                 onClick = {
                                     onBusSelected(busId)
+                                    selectedBusLatLng = latLng
                                     false
                                 },
                                 zIndex = if (isSelected || isClosest) 2f else 1f
@@ -432,11 +433,21 @@ fun LiveBusMap(
                         } else {
                             liveLocationPoints.last().let {
                                 mapState.animateCamera(it)
-                                context.showToast("Bus Location")
                             }
                         }
                     }
-                } else null,
+                } else {
+                    {
+                        if(selectedBusLatLng == null){
+                            context.showToast("No Bus found yet")
+                            return@CameraAnimateFaB
+                        } else{
+                            selectedBusLatLng?.let {
+                                mapState.animateCamera(it)
+                            }
+                        }
+                    }
+                },
                 onMyLocationClick = {
                     if (userLocation == null) {
                         context.showToast("No location found")

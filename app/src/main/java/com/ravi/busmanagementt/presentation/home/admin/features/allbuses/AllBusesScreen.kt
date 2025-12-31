@@ -95,12 +95,12 @@ fun AllBusesScreen(
 ) {
 
     val context = LocalContext.current
+    val mappedBuses by allBusesViewModel.mappedBusesWithStatus.collectAsStateWithLifecycle()
     var buses by remember { mutableStateOf(emptyList<Bus>()) }
-    val getAllBusesWithRTLocationStatus by allBusesViewModel.busesWithStatus.collectAsStateWithLifecycle()
     var isLoading by remember { mutableStateOf(false) }
 
-    LaunchedEffect(getAllBusesWithRTLocationStatus) {
-        when (val state = getAllBusesWithRTLocationStatus) {
+    LaunchedEffect(mappedBuses) {
+        when (val state = mappedBuses) {
             is GetAllBusesState.Error -> {
                 Toast.makeText(context, "Error: ${state.message}", Toast.LENGTH_LONG).show()
                 isLoading = false
@@ -110,33 +110,12 @@ fun AllBusesScreen(
                 isLoading = true
             }
 
-            is GetAllBusesState.Success -> {
+            is GetAllBusesState.Success2 -> {
 
-                buses = state.buses.mapIndexed { i, busDetailWithStatus ->
-
-                    val status =
-                        if (busDetailWithStatus.isLive) BusStatus.ACTIVE else BusStatus.IDLE
-                    val busDetail = busDetailWithStatus.busDetail
-                    val realtimeLocations = busDetailWithStatus.realtimeLocations
-                    var completedStops = 0
-                    if (realtimeLocations.isNotEmpty()) {
-                        completedStops = realtimeLocations.last().numberOfStopsReached
-                    }
-
-                    Bus(
-                        id = i,
-                        name = busDetail.driverName,
-                        number = busDetail.busId,
-                        driverName = busDetail.driverName,
-                        status = status,
-                        currentLocation = "",
-                        totalStops = busDetail.routes.size,
-                        completedStops = completedStops,
-                        eta = null
-                    )
-                }
+                buses = state.mappedBuses
                 isLoading = false
             }
+            else -> Unit
         }
     }
 
@@ -215,7 +194,7 @@ private fun AllBusesContent(
                 ) {
                     items(
                         items = filteredBuses,
-                        key = { it.id },
+                        key = { it.number },
                          contentType = { "bus_item" }
                     ) { bus ->
                         BusItem(

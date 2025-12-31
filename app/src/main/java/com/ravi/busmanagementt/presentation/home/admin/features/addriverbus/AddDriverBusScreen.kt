@@ -793,8 +793,8 @@ data class FormErrors(
 data class RouteStopForm(
     val stopName: String = "",
     val location: String = "",
-    val latitude: String = "19.1",
-    val longitude: String = "73.0"
+    val latitude: String = "",
+    val longitude: String = ""
 )
 
 data class RouteStopForErrors(

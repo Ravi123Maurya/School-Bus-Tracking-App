@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.sample
@@ -84,6 +85,45 @@ class AllBusesViewModel @Inject constructor(
                 initialValue = GetAllBusesState.Loading
             )
 
+    val mappedBusesWithStatus: StateFlow<GetAllBusesState> = busesWithStatus
+        .map { state ->
+            when (state) {
+                is GetAllBusesState.Success -> {
+                    val bus = state.buses.map {  busDetailWithStatus ->
+                        val status =
+                            if (busDetailWithStatus.isLive) BusStatus.ACTIVE else BusStatus.IDLE
+                        val busDetail = busDetailWithStatus.busDetail
+                        val realtimeLocations = busDetailWithStatus.realtimeLocations
+                        var completedStops = 0
+                        if (realtimeLocations.isNotEmpty()) {
+                            completedStops = realtimeLocations.last().numberOfStopsReached
+                        }
+
+                        Bus(
+                            id = -1,
+                            name = busDetail.driverName,
+                            number = busDetail.busId,
+                            driverName = busDetail.driverName,
+                            status = status,
+                            currentLocation = "",
+                            totalStops = busDetail.routes.size,
+                            completedStops = completedStops,
+                            eta = null
+                        )
+                    }
+                    GetAllBusesState.Success2(bus)
+                }
+
+                else -> state
+            }
+        }
+        .flowOn(Dispatchers.Default)
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = GetAllBusesState.Loading
+        )
+
 
     val busesAndRoutesFlow: StateFlow<Resource<List<BusAndDriver>>> = allBusesFlow
         .stateIn(
@@ -99,4 +139,5 @@ sealed class GetAllBusesState {
     object Loading : GetAllBusesState()
     data class Error(val message: String) : GetAllBusesState()
     data class Success(val buses: List<BusesWithStatus>) : GetAllBusesState()
+    data class Success2(val mappedBuses: List<Bus>) : GetAllBusesState()
 }

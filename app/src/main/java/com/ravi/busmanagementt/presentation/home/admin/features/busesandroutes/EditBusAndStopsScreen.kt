@@ -703,281 +703,274 @@ private fun AddEditStopDialog(
     onDismiss: () -> Unit,
     onSave: (BusStop) -> Unit
 ) {
-    var stopName by remember { mutableStateOf(stop?.stopName ?: "") }
-    var location by remember { mutableStateOf(stop?.location ?: "") }
-    var latitude by remember { mutableStateOf(stop?.geoPoint?.latitude?.toString() ?: "") }
-    var longitude by remember { mutableStateOf(stop?.geoPoint?.longitude?.toString() ?: "") }
 
-    val isFormValid = remember(stopName, location, latitude, longitude) {
-        stopName.isNotBlank() &&
-                location.isNotBlank() &&
-                latitude.toDoubleOrNull() != null &&
-                longitude.toDoubleOrNull() != null
-    }
-    var routeStopForm by remember {
-        mutableStateOf(
-            RouteStopForm(
-                stopName = stopName,
-                location = location,
-                latitude = latitude,
-                longitude = longitude
-            )
-        )
-    }
+    var routeStopForm by remember { mutableStateOf(RouteStopForm()) }
     var routeStopErrors by remember { mutableStateOf(RouteStopForErrors()) }
 
 
     val isEdit = stop != null
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(
-                    imageVector = if (isEdit) Icons.Default.Edit else Icons.Default.Add,
-                    contentDescription = null,
-                    tint = AppColors.Primary
-                )
-                Text(if (isEdit) "Edit Stop" else "Add Stop")
-            }
-        },
-        text = {
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.heightIn(max = 450.dp)
-            ) {
-                item {
-                    OutlinedTextField(
-                        value = routeStopForm.stopName,
-                        onValueChange = { routeStopForm = routeStopForm.copy(stopName = it) },
-                        label = { Text("Stop Name") },
-                        placeholder = { Text("Main Street Stop") },
-                        leadingIcon = {
-                            Icon(Icons.Default.LocationOn, contentDescription = null)
-                        },
-                        isError = routeStopErrors.stopNameError != null,
-                        supportingText = routeStopErrors.stopNameError?.let { { Text(it) } },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
+    LaunchedEffect(stop) {
+        if (stop != null) {
+            routeStopForm = routeStopForm.copy(
+                stopName = stop.stopName,
+                location = stop.location,
+                latitude = stop.geoPoint.latitude.toString(),
+                longitude = stop.geoPoint.longitude.toString()
+            )
+        }
+    }
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isEdit) Icons.Default.Edit else Icons.Default.Add,
+                        contentDescription = null,
+                        tint = AppColors.Primary
                     )
+                    Text(if (isEdit) "Edit Stop" else "Add Stop")
                 }
-
-                item {
-                    OutlinedTextField(
-                        value = routeStopForm.location,
-                        onValueChange = { routeStopForm = routeStopForm.copy(location = it) },
-                        label = { Text("Location Address") },
-                        placeholder = { Text("123 Main St, City") },
-                        leadingIcon = {
-                            Icon(Icons.Default.Place, contentDescription = null)
-                        },
-                        isError = routeStopErrors.locationError != null,
-                        supportingText = routeStopErrors.locationError?.let { { Text(it) } },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-
-                item {
-                    Text(
-                        text = "GPS Coordinates",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color.Gray
-                    )
-                }
-
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
+            },
+            text = {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.heightIn(max = 450.dp)
+                ) {
+                    item {
                         OutlinedTextField(
-                            value = routeStopForm.latitude,
-                            onValueChange = { routeStopForm = routeStopForm.copy(latitude = it) },
-                            label = { Text("Latitude") },
-                            placeholder = { Text("19.0760") },
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Decimal
-                            ),
-                            isError = routeStopErrors.latitudeError != null,
-                            supportingText = routeStopErrors.latitudeError?.let { { Text(it) } },
+                            value = routeStopForm.stopName,
+                            onValueChange = { routeStopForm = routeStopForm.copy(stopName = it) },
+                            label = { Text("Stop Name") },
+                            placeholder = { Text("Main Street Stop") },
+                            leadingIcon = {
+                                Icon(Icons.Default.LocationOn, contentDescription = null)
+                            },
+                            isError = routeStopErrors.stopNameError != null,
+                            supportingText = routeStopErrors.stopNameError?.let { { Text(it) } },
                             singleLine = true,
-                            modifier = Modifier.weight(1f)
-                        )
-
-                        OutlinedTextField(
-                            value = routeStopForm.longitude,
-                            onValueChange = { routeStopForm = routeStopForm.copy(longitude = it) },
-                            label = { Text("Longitude") },
-                            placeholder = { Text("72.8777") },
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Decimal
-                            ),
-                            isError = routeStopErrors.longitudeError != null,
-                            supportingText = routeStopErrors.longitudeError?.let { { Text(it) } },
-                            singleLine = true,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    val validationErrors = validateRouteStop(routeStopForm)
-                    if (validationErrors.hasErrors()) {
-                        routeStopErrors = validationErrors
-                    } else {
-                        val lat = routeStopForm.latitude.toDouble()
-                        val lng = routeStopForm.longitude.toDouble()
-                        onSave(
-                            BusStop(
-                                stopName = routeStopForm.stopName,
-                                location = routeStopForm.location,
-                                geoPoint = GeoPoint(lat, lng)
+
+                    item {
+                        OutlinedTextField(
+                            value = routeStopForm.location,
+                            onValueChange = { routeStopForm = routeStopForm.copy(location = it) },
+                            label = { Text("Location Address") },
+                            placeholder = { Text("123 Main St, City") },
+                            leadingIcon = {
+                                Icon(Icons.Default.Place, contentDescription = null)
+                            },
+                            isError = routeStopErrors.locationError != null,
+                            supportingText = routeStopErrors.locationError?.let { { Text(it) } },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
+                    item {
+                        Text(
+                            text = "GPS Coordinates",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color.Gray
+                        )
+                    }
+
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = routeStopForm.latitude,
+                                onValueChange = {
+                                    routeStopForm = routeStopForm.copy(latitude = it)
+                                },
+                                label = { Text("Latitude") },
+                                placeholder = { Text("19.0760") },
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Decimal
+                                ),
+                                isError = routeStopErrors.latitudeError != null,
+                                supportingText = routeStopErrors.latitudeError?.let { { Text(it) } },
+                                singleLine = true,
+                                modifier = Modifier.weight(1f)
                             )
-                        )
+
+                            OutlinedTextField(
+                                value = routeStopForm.longitude,
+                                onValueChange = {
+                                    routeStopForm = routeStopForm.copy(longitude = it)
+                                },
+                                label = { Text("Longitude") },
+                                placeholder = { Text("72.8777") },
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Decimal
+                                ),
+                                isError = routeStopErrors.longitudeError != null,
+                                supportingText = routeStopErrors.longitudeError?.let { { Text(it) } },
+                                singleLine = true,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
                     }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val validationErrors = validateRouteStop(routeStopForm)
+                        if (validationErrors.hasErrors()) {
+                            routeStopErrors = validationErrors
+                        } else {
+                            val lat = routeStopForm.latitude.toDouble()
+                            val lng = routeStopForm.longitude.toDouble()
+                            onSave(
+                                BusStop(
+                                    stopName = routeStopForm.stopName,
+                                    location = routeStopForm.location,
+                                    geoPoint = GeoPoint(lat, lng)
+                                )
+                            )
+                        }
 
-
-                },
-                enabled = true,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = AppColors.Primary
-                )
-            ) {
-                Text(if (isEdit) "Save" else "Add")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    )
-}
-
-@Composable
-private fun ActionButtons(
-    hasChanges: Boolean,
-    onSaveClick: () -> Unit,
-    onCancelClick: () -> Unit
-) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shadowElevation = 8.dp,
-        color = Color.White
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            OutlinedButton(
-                onClick = onCancelClick,
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Cancel")
-            }
-
-            Button(
-                onClick = onSaveClick,
-                modifier = Modifier.weight(1f),
-                enabled = hasChanges,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = AppColors.Primary
-                )
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Check,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(Modifier.width(8.dp))
-                Text("Save Changes")
-            }
-        }
-    }
-}
-
-
-@Preview(showBackground = true)
-@Composable
-private fun FinalUpdateAlertDialog(
-    hasConfirmClicked: Boolean = false,
-    onConfirm: () -> Unit = {},
-    onDismiss: () -> Unit = {}
-) {
-
-    var verifyPassword by remember { mutableStateOf("") }
-    var hasPasswordVerified by remember(verifyPassword) { mutableStateOf(verifyPassword == "123456") }
-
-    AlertDialog(
-        title = {
-            Text("Final Update")
-        },
-        text = {
-            Column {
-                Text("Are you sure you want to update the changes? This action cannot be undone.")
-                Spacer(Modifier.height(16.dp))
-                TextField(
-                    value = verifyPassword,
-                    onValueChange = { verifyPassword = it },
-                    placeholder = { Text("Enter password to confirm") }
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = onConfirm,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = AppColors.Primary
-                ),
-                enabled = hasPasswordVerified,
-            ) {
-                if (hasConfirmClicked) {
-                    CircularLoading()
-                } else {
-                    Text("Confirm Changes")
+                    },
+                    enabled = true,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = AppColors.Primary
+                    )
+                ) {
+                    Text(if (isEdit) "Save" else "Add")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) {
+                    Text("Cancel")
                 }
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
+        )
+    }
+
+    @Composable
+    private fun ActionButtons(
+        hasChanges: Boolean,
+        onSaveClick: () -> Unit,
+        onCancelClick: () -> Unit
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shadowElevation = 8.dp,
+            color = Color.White
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onCancelClick,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Cancel")
+                }
+
+                Button(
+                    onClick = onSaveClick,
+                    modifier = Modifier.weight(1f),
+                    enabled = hasChanges,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = AppColors.Primary
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text("Save Changes")
+                }
             }
-        },
-        onDismissRequest = onDismiss,
-    )
-}
-
-// Validation
-private fun validateBusInfo(state: EditBusState): EditBusErrors {
-    var errors = EditBusErrors()
-
-    if (state.busId.isBlank()) {
-        errors = errors.copy(busIdError = "Bus ID is required")
+        }
     }
 
-    if (state.driverName.isBlank()) {
-        errors = errors.copy(driverNameError = "Driver name is required")
+
+    @Preview(showBackground = true)
+    @Composable
+    private fun FinalUpdateAlertDialog(
+        hasConfirmClicked: Boolean = false,
+        onConfirm: () -> Unit = {},
+        onDismiss: () -> Unit = {}
+    ) {
+
+        var verifyPassword by remember { mutableStateOf("") }
+        var hasPasswordVerified by remember(verifyPassword) { mutableStateOf(verifyPassword == "123456") }
+
+        AlertDialog(
+            title = {
+                Text("Final Update")
+            },
+            text = {
+                Column {
+                    Text("Are you sure you want to update the changes? This action cannot be undone.")
+                    Spacer(Modifier.height(16.dp))
+                    TextField(
+                        value = verifyPassword,
+                        onValueChange = { verifyPassword = it },
+                        placeholder = { Text("Enter password to confirm") }
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = onConfirm,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = AppColors.Primary
+                    ),
+                    enabled = hasPasswordVerified,
+                ) {
+                    if (hasConfirmClicked) {
+                        CircularLoading()
+                    } else {
+                        Text("Confirm Changes")
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) {
+                    Text("Cancel")
+                }
+            },
+            onDismissRequest = onDismiss,
+        )
     }
 
-    if (state.email.isBlank()) {
-        errors = errors.copy(emailError = "Email is required")
-    } else if (!android.util.Patterns.EMAIL_ADDRESS.matcher(state.email).matches()) {
-        errors = errors.copy(emailError = "Invalid email format")
+    // Validation
+    private fun validateBusInfo(state: EditBusState): EditBusErrors {
+        var errors = EditBusErrors()
+
+        if (state.busId.isBlank()) {
+            errors = errors.copy(busIdError = "Bus ID is required")
+        }
+
+        if (state.driverName.isBlank()) {
+            errors = errors.copy(driverNameError = "Driver name is required")
+        }
+
+        if (state.email.isBlank()) {
+            errors = errors.copy(emailError = "Email is required")
+        } else if (!android.util.Patterns.EMAIL_ADDRESS.matcher(state.email).matches()) {
+            errors = errors.copy(emailError = "Invalid email format")
+        }
+
+        return errors
     }
 
-    return errors
-}
-
-private fun EditBusErrors.hasErrors(): Boolean {
-    return busIdError != null || driverNameError != null || emailError != null
-}
+    private fun EditBusErrors.hasErrors(): Boolean {
+        return busIdError != null || driverNameError != null || emailError != null
+    }

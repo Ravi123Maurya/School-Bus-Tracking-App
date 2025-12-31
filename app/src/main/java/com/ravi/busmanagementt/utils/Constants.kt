@@ -32,4 +32,6 @@ object Constants{
 
 
 
+    /** Others **/
+    const val PRIVACY_POLICY_URL = "https://sites.google.com/view/privacypolicy-school-bus/home"
 }

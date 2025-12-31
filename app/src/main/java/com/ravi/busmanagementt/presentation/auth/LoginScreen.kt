@@ -11,6 +11,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -31,6 +32,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -45,6 +48,7 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -58,12 +62,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -82,6 +92,7 @@ import com.ravi.busmanagementt.presentation.navigation.NavRoutes
 import com.ravi.busmanagementt.presentation.viewmodels.AuthState
 import com.ravi.busmanagementt.presentation.viewmodels.AuthViewModel
 import com.ravi.busmanagementt.ui.theme.AppColors
+import com.ravi.busmanagementt.utils.Constants
 import com.ravi.busmanagementt.utils.showToast
 import kotlinx.coroutines.launch
 
@@ -130,11 +141,14 @@ private fun LoginContent(
     hasLoginPressed: Boolean = false,
     onLoginPressed: (String, String) -> Unit,
     onBackPress: () -> Unit = {}
-){
+) {
+
+    val uriHandler = LocalUriHandler.current
 
     var email by remember { mutableStateOf("ravibus4001@gmail.com") }
     var password by remember { mutableStateOf("123456") }
     var isPasswordVisible by remember { mutableStateOf(false) }
+    var hasPolicyAccepted by remember { mutableStateOf(false) }
 
     val visibleState = remember {
         MutableTransitionState(false).apply {
@@ -263,15 +277,68 @@ private fun LoginContent(
 
                             Spacer(modifier = Modifier.height(24.dp))
 
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Checkbox(
+                                    checked = hasPolicyAccepted,
+                                    onCheckedChange = {
+                                        hasPolicyAccepted = it
+                                    },
+                                    colors = CheckboxDefaults.colors(
+                                        checkedColor = AppColors.Primary,
+                                        uncheckedColor = MaterialTheme.colorScheme.onBackground
+                                    )
+                                )
+
+                                val annotatedString = remember {
+                                    buildAnnotatedString {
+                                        append("Read our ")
+                                        pushStringAnnotation(
+                                            tag = "policy",
+                                            annotation = Constants.PRIVACY_POLICY_URL
+                                        )
+                                        withStyle(
+                                            style = SpanStyle(
+                                                color = AppColors.Primary,
+                                                textDecoration = TextDecoration.Underline
+                                            )
+                                        ) {
+                                            append("Privacy Policy")
+                                        }
+                                        pop()
+                                    }
+                                }
+                                TextButton(
+                                    onClick = {
+                                        uriHandler.openUri(Constants.PRIVACY_POLICY_URL)
+                                    }
+                                ) {
+                                    Text(
+                                        text = annotatedString,
+                                        style = TextStyle(
+                                            textAlign = TextAlign.Center,
+                                            fontSize = 12.sp,
+                                            color = MaterialTheme.colorScheme.onBackground.copy(
+                                                alpha = 0.5f
+                                            )
+                                        )
+                                    )
+                                }
+                            }
+
+
+                            Spacer(modifier = Modifier.height(24.dp))
+
                             Button(
                                 onClick = {
-                                    if (email.isNotBlank() && password.isNotBlank())
+                                    if (email.isNotBlank() && password.isNotBlank() && hasPolicyAccepted)
                                         onLoginPressed(email, password)
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(56.dp),
-                                enabled = email.isNotBlank() && password.isNotBlank() && !hasLoginPressed,
+                                enabled = email.isNotBlank() && password.isNotBlank() && !hasLoginPressed && hasPolicyAccepted,
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = AppColors.Primary,
                                 )
