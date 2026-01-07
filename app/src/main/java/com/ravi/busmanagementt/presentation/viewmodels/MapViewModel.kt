@@ -26,6 +26,7 @@ import com.ravi.busmanagementt.presentation.home.MapState
 import com.ravi.busmanagementt.utils.DistanceMatrix
 import com.ravi.busmanagementt.utils.NetworkConnectivityManager
 import com.ravi.busmanagementt.utils.NetworkStatus
+import com.ravi.busmanagementt.utils.TimeMatrix
 import com.ravi.busmanagementt.utils.bitmapDescriptor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -147,7 +148,7 @@ class MapViewModel @Inject constructor(
 
 
     // Load Map here to avoid ui lag
-     val busMarkerIcon = MutableStateFlow<BitmapDescriptor?>(null)
+    val busMarkerIcon = MutableStateFlow<BitmapDescriptor?>(null)
 
     private val _isAdminPortal = MutableStateFlow(false)
     val isAdminPortal = _isAdminPortal.asStateFlow()
@@ -255,15 +256,22 @@ class MapViewModel @Inject constructor(
             .onEach { location ->
                 _realtimeLocationState.value = location
 
-                withContext(Dispatchers.Default) {
+                // Eta and distance calculation
+                viewModelScope.launch(Dispatchers.Default) {
                     eta.value = if (stopLocation.value == null) "Set stop location" else {
-                        val fiveMinutesAgo = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(5)
-                        if(location.last().timestamp.toLong() < fiveMinutesAgo){
-                            "Offline"
-                        }else{
-                            DistanceMatrix.calculateScheduleTimeETA(location, stopLocation.value!!)
-                                .toString() + "mins"
-                        }
+                        if (!location.isNullOrEmpty()) {
+                            val fiveMinutesAgo =
+                                System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(5)
+                            if (location.last().timestamp.toLong() < fiveMinutesAgo) {
+                                "Offline" // Bus will show offline if las location is older than 5 minutes
+                            } else {
+                                val etaMinutes = DistanceMatrix.calculateScheduleTimeETA(
+                                    location,
+                                    stopLocation.value!!
+                                )
+                                TimeMatrix.formatEtaForUi(etaMinutes)
+                            }
+                        } else "Offline"
 
                     }
 
@@ -279,11 +287,14 @@ class MapViewModel @Inject constructor(
                         )
                     }
 
-                    remainingDistance.value = (SphericalUtil.computeDistanceBetween(
-                        busCurrentLocation,
-                        stopLocation.value
-                    )
-                        .roundToInt() / 1000f).toString() + " km"
+                    if (busCurrentLocation != null && stopLocation.value != null) {
+                        remainingDistance.value = (SphericalUtil.computeDistanceBetween(
+                            busCurrentLocation,
+                            stopLocation.value
+                        )
+                            .roundToInt() / 1000f).toString() + " km"
+                    }
+
                 }
             }.catch {
 

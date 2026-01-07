@@ -92,6 +92,7 @@ import com.ravi.busmanagementt.presentation.components.InternetConnectionAlertVi
 import com.ravi.busmanagementt.presentation.home.admin.AdminPortal
 import com.ravi.busmanagementt.presentation.home.caretaker.CaretakerScreen
 import com.ravi.busmanagementt.presentation.viewmodels.BusViewModel
+import com.ravi.busmanagementt.testing.DriverTestingButton
 import com.ravi.busmanagementt.utils.DistanceMatrix
 import kotlinx.coroutines.launch
 
@@ -124,6 +125,9 @@ fun HomeScreen(
     var hasLogoutClick by remember { mutableStateOf(false) }
     val busEta by mapViewModel.eta.collectAsStateWithLifecycle()
     val remainingDistance by mapViewModel.remainingDistance.collectAsStateWithLifecycle()
+
+    //Testing
+    val busRoute by mapViewModel.busRouteLatLng.collectAsStateWithLifecycle()
 
 
     //////////////// -------- Map Content ---------- //////////////////////////////
@@ -175,6 +179,7 @@ fun HomeScreen(
         onPermissionGranted = {
 
             HomeScreenContent(
+                busRoute = busRoute,
                 hasInternetConnection = hasInternetConnection,
                 portal = portal?.value ?: "No Value",
                 busId = busId,
@@ -269,6 +274,7 @@ fun HomeScreen(
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 private fun HomeScreenContent(
+    busRoute: List<LatLng>,
     hasInternetConnection: Boolean,
     portal: String,
     busId: String? = null,
@@ -355,6 +361,8 @@ private fun HomeScreenContent(
 
                     // Only for Driver
                     if (portal == Portals.DRIVER.value) {
+                        DriverTestingButton(routePoints = busRoute)
+                        Spacer(Modifier.height(16.dp))
                         StartStopButton(
                             isLocationPointsEmpty = liveLocationPoints.isNullOrEmpty(),
                             sharingState

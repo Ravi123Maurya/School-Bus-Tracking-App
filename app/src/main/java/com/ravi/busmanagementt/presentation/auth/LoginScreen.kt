@@ -145,7 +145,7 @@ private fun LoginContent(
 
     val uriHandler = LocalUriHandler.current
 
-    var email by remember { mutableStateOf("ravibus4001@gmail.com") }
+    var email by remember { mutableStateOf("testadmin@gmail.com") }
     var password by remember { mutableStateOf("123456") }
     var isPasswordVisible by remember { mutableStateOf(false) }
     var hasPolicyAccepted by remember { mutableStateOf(false) }

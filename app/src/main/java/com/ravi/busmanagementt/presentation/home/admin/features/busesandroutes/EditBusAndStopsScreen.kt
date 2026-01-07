@@ -324,7 +324,6 @@ private fun EditBusAndStopsContent(
     }
 
 
-    // Todo : Save Button is not enabling after filling form
     // Add Stop Dialog
     if (showAddStopDialog) {
         AddEditStopDialog(
@@ -345,7 +344,6 @@ private fun EditBusAndStopsContent(
         )
     }
 
-    // Todo: Geopoints aren't showing changed in edit screen
     // Edit Stop Dialog
     editingStopIndex?.let { index ->
         AddEditStopDialog(

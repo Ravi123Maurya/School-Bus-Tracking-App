@@ -131,7 +131,7 @@ class LocationService : Service() {
                                         busStops[numberOfStopsReached].geoPoint.latitude,
                                         busStops[numberOfStopsReached].geoPoint.longitude
                                     ),
-                                    60 // todo: make the range smaller when real testing- 50-60m
+                                    60 // todo: make the range smaller in real testing:  (50-60m)
                                 )
                                 val distance = DistanceMatrix.calculateDistance(LatLng(location.latitude, location.longitude),
                                     LatLng(

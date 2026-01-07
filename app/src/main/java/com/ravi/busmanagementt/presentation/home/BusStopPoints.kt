@@ -29,11 +29,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.SphericalUtil
+import com.ravi.busmanagementt.R
 import com.ravi.busmanagementt.data.repository.RealtimeLocation
 import com.ravi.busmanagementt.ui.theme.AppColors
 import com.ravi.busmanagementt.utils.DistanceMatrix
@@ -70,7 +72,8 @@ fun BusStopPoints(
         stops.mapIndexed { i, stop ->
             var calculatedEta: Int? = null
             val status = when {
-                i < stopsReachedCount-> {
+                i < stopsReachedCount -> {
+                    // Todo: Reached time always shows current time (bus last location)
                     reachedTime = TimeMatrix.formatTimestampToReadableTime(lastLocationUpdate.timestamp.toLong(), "h:mm a")
                     StopStatus.REACHED
                 }
@@ -271,7 +274,7 @@ private fun StopBadge(
 private fun StopStatusText(stop: BusStop) {
     val (statusText, statusColor) = when (stop.status) {
         StopStatus.REACHED -> {
-            "Reached at ${stop.actualTime}" to Color(0xFF4CAF50)
+            "Reached" to Color(0xFF4CAF50) // Todo: Show Reached Time
         }
 
         StopStatus.CURRENT -> {

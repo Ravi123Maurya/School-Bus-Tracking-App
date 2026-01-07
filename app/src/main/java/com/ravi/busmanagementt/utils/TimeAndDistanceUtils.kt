@@ -14,67 +14,23 @@ import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 import kotlin.time.ExperimentalTime
 
-
-
-fun main() {
-    testEtaCalculation()
-}
-
-fun testEtaCalculation() {
-    // 1. Setup a fake "Now"
-    val now = System.currentTimeMillis()
-
-    // 2. Define a route going North (increasing Latitude)
-    // Roughly 111,000 meters per degree of latitude.
-    // 0.001 degrees is approx 111 meters.
-
-    // Let's simulate a bus moving at approx 11 meters per second (~40km/h)
-    // Point A (30 seconds ago)
-    val p1 = RealtimeLocation(
-        latitude = 19.0000,
-        longitude = 73.0000,
-        timestamp = (now - 30000).toString() // 30 secs ago
-    )
-
-    // Point B (15 seconds ago, moved ~165 meters north)
-    val p2 = RealtimeLocation(
-        latitude = 19.0015,
-        longitude = 73.0000,
-        timestamp = (now - 15000).toString() // 15 secs ago
-    )
-
-    // Point C (Now, moved another ~165 meters north)
-    val p3 = RealtimeLocation(
-        latitude = 19.0030,
-        longitude = 73.0000,
-        timestamp = now.toString() // Now
-    )
-
-    val dummyBusPath = listOf(p1, p2, p3)
-
-    // 3. Define the Stop Location further North
-    // Let's place the stop 0.03 degrees North of current position (p3).
-    // 0.03 deg ~= 3.3 km.
-    // At ~11 m/s, 3300m should take about 300 seconds (5 minutes).
-    val stopLocation = LatLng(19.0330, 73.0000)
-
-    // 4. Run the function
-    val eta = DistanceMatrix.calculateScheduleTimeETA(dummyBusPath, stopLocation)
-
-    println("Calculated ETA: $eta minutes")
-
-    // Verification logic
-    if (eta in 4..6) {
-        println("✅ TEST PASSED: ETA is reasonable (expected ~5 mins)")
-    } else {
-        println("❌ TEST FAILED: ETA $eta is inaccurate (expected ~5 mins)")
-    }
-}
-
-
-
+/**
+ * Utility object for handling time-related operations.
+ * Provides methods for formatting timestamps and ETA durations.
+ */
 object TimeMatrix {
 
+    /**
+     * Formats a timestamp (in milliseconds) into a readable date/time string.
+     *
+     * @param timestamp The timestamp in milliseconds to format.
+     * @param format The pattern to use for formatting. Defaults to "dd/MM/yyyy h:mm a".
+     *               Examples:
+     *               - "h:mm a" -> 10:30 AM
+     *               - "HH:mm:ss" -> 22:30:05
+     *               - "dd/MM/yyyy h:mm a" -> 15/11/2025 10:30 AM
+     * @return A formatted string representation of the timestamp.
+     */
     @RequiresApi(Build.VERSION_CODES.O)
     @OptIn(ExperimentalTime::class)
     fun formatTimestampToReadableTime(
@@ -85,9 +41,6 @@ object TimeMatrix {
         val instant: Instant? = Instant.ofEpochMilli(timestamp)
 
         // A formatter defines how the time will be displayed.
-        // "h:mm a" -> 10:30 AM
-        // "HH:mm:ss" -> 22:30:05
-        // "dd/MM/yyyy h:mm a" -> 15/11/2025 10:30 AM
         val formatter = DateTimeFormatter.ofPattern(format)
 
         val localDateTime = LocalDateTime.ofInstant(instant, ZoneId.systemDefault())
@@ -95,31 +48,68 @@ object TimeMatrix {
         return formatter.format(localDateTime)
     }
 
-    fun isTime1Older(time1: Long, time2: Long): Boolean = time1 < time2
+    /**
+     * Formats an estimated time of arrival (ETA) in minutes into a user-friendly string.
+     *
+     * @param minutes The duration in minutes.
+     * @return A string representation of the duration (e.g., "45 mins", "1 hr", "1 hr 30 mins").
+     */
+    fun formatEtaForUi(minutes: Int): String{
+        if(minutes < 60) return "$minutes mins"
+        val hrs = minutes / 60
+        val mins = minutes % 60
+        return if(mins == 0) "$hrs hr" else "$hrs hr $mins mins"
+    }
 
 
 }
 
+/**
+ * Utility object for handling distance and location-related operations.
+ * Uses SphericalUtil to compute distances between coordinates.
+ */
 object DistanceMatrix {
 
+    /**
+     * Checks if the distance between two points is within a specified range.
+     *
+     * @param point1 The first LatLng point.
+     * @param point2 The second LatLng point.
+     * @param range The maximum allowed distance in meters. Defaults to 50 meters.
+     * @return True if the distance is less than or equal to the range, false otherwise.
+     */
     fun isDistanceInRange(point1: LatLng, point2: LatLng, range: Int = 50): Boolean {
         val distance = SphericalUtil.computeDistanceBetween(point1, point2)
         return distance <= range
     }
 
+    /**
+     * Calculates the distance between two points in meters.
+     *
+     * @param point1 The first LatLng point.
+     * @param point2 The second LatLng point.
+     * @return The distance between the points in meters.
+     */
     fun calculateDistance(point1: LatLng, point2: LatLng): Int {
         return SphericalUtil.computeDistanceBetween(point1, point2).toInt()
     }
 
+    /**
+     * Calculates the Estimated Time of Arrival (ETA) to a specific stop location based on recent realtime locations.
+     *
+     * It filters locations from the last 3 minutes, calculates the total distance travelled and total time taken
+     * to determine the average speed. Using this speed and the distance to the stop, it estimates the arrival time.
+     *
+     * @param realtimeLocations A list of [RealtimeLocation] objects representing the bus's recent movements.
+     * @param stopLocation The [LatLng] of the destination stop.
+     * @return The estimated time of arrival in minutes. Returns 0 if there isn't enough data or speed is too low.
+     */
     fun calculateScheduleTimeETA(
         realtimeLocations: List<RealtimeLocation>,
         stopLocation: LatLng
     ): Int {
 
-//        Log.d("ETA", "ETA: RTL Size ${realtimeLocations.size} --- StopLocation: $stopLocation")
-
         if (realtimeLocations.size < 3){
-//            Log.d("ETA", "Returning... RealtimeLocations: ${realtimeLocations.size} is less than 3")
             return 0
         }
 
@@ -128,7 +118,6 @@ object DistanceMatrix {
         val recentFilteredLocations = realtimeLocations.filter { it.timestamp.toLong() > threeMinutesAgo }.sortedBy { it.timestamp.toLong() }
 
         if (recentFilteredLocations.size < 3){
-//            Log.d("ETA", "Returning... Recent Filtered Locations: ${recentFilteredLocations.size} is less than 3")
             return 0
         }
 
@@ -139,27 +128,21 @@ object DistanceMatrix {
         }.sum()
 
         val totalTimeTakenMillis = recentFilteredLocations.last().timestamp.toLong() - recentFilteredLocations.first().timestamp.toLong()
-//        Log.d("ETA", "Total Distance: $totalDistanceTravelledInMeters and TotalTimeTaken: $totalTimeTakenMillis")
         if(totalTimeTakenMillis <= 0 ){
-//            Log.d("ETA", "Returning... TotalTimeTaken: $totalTimeTakenMillis is less than 0 or equal to 0")
             return 0
         }
 
         val averageSpeed = totalDistanceTravelledInMeters / (totalTimeTakenMillis/1000.0)
-//        Log.d("ETA", "Average Speed: $averageSpeed")
         if (averageSpeed < 1.0){
-//            Log.d("ETA", "Returning... Average Speed: $averageSpeed is less than 1.0")
             return 0
         }
 
-//        Log.d("ETA", "All checks passed")
         val currentLocationPoint = recentFilteredLocations.last()
         val currentLocation = LatLng(currentLocationPoint.latitude, currentLocationPoint.longitude)
 
         val distanceToStop = SphericalUtil.computeDistanceBetween(currentLocation, stopLocation)
 
         val etaInSeconds = distanceToStop / averageSpeed
-        Log.d("ETA", "ETA in Seconds: $etaInSeconds returning eta...")
         val etaMinutes = TimeUnit.SECONDS.toMinutes(etaInSeconds.toLong()).toInt()
         return if (etaMinutes == 0 && etaInSeconds > 0) 1 else etaMinutes
     }
