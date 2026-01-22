@@ -4,6 +4,7 @@ import com.google.android.gms.maps.model.LatLng
 import com.ravi.busmanagementt.data.repository.RealtimeLocation
 import com.ravi.busmanagementt.domain.model.BusAndDriver
 import com.ravi.busmanagementt.domain.model.BusStop
+import com.ravi.busmanagementt.domain.model.Caretaker
 import com.ravi.busmanagementt.domain.model.Parent
 import com.ravi.busmanagementt.utils.Resource
 import kotlinx.coroutines.flow.Flow
@@ -29,7 +30,11 @@ interface AdminRepository {
 
 
     suspend fun getBusWithId(busId: String): Flow<Resource<BusAndDriver>>
-    suspend fun updateBus(busAndDriver: BusAndDriver): Flow<Resource<String>>
+    suspend fun updateBus(busAndDriver: BusAndDriver, adminPassword: String): Flow<Resource<String>>
     suspend fun deleteBus(busId: String): Flow<Resource<String>>
+
+
+    suspend fun addCaretaker(caretaker: Caretaker): Flow<Resource<String>>
+    suspend fun updateCaretaker(caretaker: Caretaker) : Flow<Resource<String>>
 
 }

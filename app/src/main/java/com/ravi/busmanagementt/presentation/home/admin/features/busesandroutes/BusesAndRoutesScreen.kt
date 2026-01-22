@@ -465,20 +465,20 @@ private fun BusWithRoutesCard(
                             }
                         )
 
-                        DropdownMenuItem(
-                            text = { Text("Delete", color = Color(0xFFE53935)) },
-                            onClick = {
-                                showMenu = false
-                                onDeleteClick()
-                            },
-                            leadingIcon = {
-                                Icon(
-                                    Icons.Default.Delete,
-                                    contentDescription = null,
-                                    tint = Color(0xFFE53935)
-                                )
-                            }
-                        )
+//                        DropdownMenuItem(
+//                            text = { Text("Delete", color = Color(0xFFE53935)) },
+//                            onClick = {
+//                                showMenu = false
+//                                onDeleteClick()
+//                            },
+//                            leadingIcon = {
+//                                Icon(
+//                                    Icons.Default.Delete,
+//                                    contentDescription = null,
+//                                    tint = Color(0xFFE53935)
+//                                )
+//                            }
+//                        )
                     }
                 }
 

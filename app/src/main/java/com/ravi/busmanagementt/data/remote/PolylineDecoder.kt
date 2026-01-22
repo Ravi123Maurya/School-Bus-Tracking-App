@@ -2,11 +2,13 @@ package com.ravi.busmanagementt.data.remote
 
 // In a new file, e.g., utils/PolylineDecoder.kt
 import com.google.android.gms.maps.model.LatLng
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Decodes an encoded polyline string into a List of LatLng.
  */
-fun decodePolyline(encoded: String): List<LatLng> {
+suspend fun decodePolyline(encoded: String): List<LatLng> = withContext(Dispatchers.Default) {
     val poly = ArrayList<LatLng>()
     var index = 0
     val len = encoded.length
@@ -38,5 +40,5 @@ fun decodePolyline(encoded: String): List<LatLng> {
         val p = LatLng(lat.toDouble() / 1E5, lng.toDouble() / 1E5)
         poly.add(p)
     }
-    return poly
+    return@withContext poly
 }

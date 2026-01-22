@@ -108,9 +108,11 @@ class UserRepositoryImpl @Inject constructor(
         parentDbRef.set(busStopData,SetOptions.merge())
             .addOnCompleteListener {
                 Log.d("UserRepositoryImpl", "Token sent to Firestore successfully")
+                return@addOnCompleteListener
             }
             .addOnFailureListener { e ->
                 Log.e("UserRepositoryImpl", "Error sending token to Firestore", e)
+                return@addOnFailureListener
             }
     }
 

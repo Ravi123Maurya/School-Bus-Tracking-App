@@ -7,13 +7,18 @@ import androidx.lifecycle.viewModelScope
 import com.google.android.gms.maps.model.LatLng
 import com.ravi.busmanagementt.data.datastore.PortalManager
 import com.ravi.busmanagementt.data.datastore.Portals
+import com.ravi.busmanagementt.data.datastore.UserPrefManager
 import com.ravi.busmanagementt.domain.model.BusStop
 import com.ravi.busmanagementt.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -45,11 +50,11 @@ class PortalViewModel @Inject constructor(
         }
     }
 
-    fun getPortal() {
+    private fun getPortal() {
         viewModelScope.launch {
             try {
                 PortalManager.getPortal(context).collectLatest { portal ->
-                    _portal.value = Portals.entries.find { it.value == portal}
+                    _portal.value = Portals.entries.find { it.value == portal }
                 }
 
             } catch (e: Exception) {
@@ -58,24 +63,31 @@ class PortalViewModel @Inject constructor(
         }
     }
 
+
+    // Set Parent Stop Location
     fun setStopLocation(stopLocation: LatLng) {
         viewModelScope.launch {
             PortalManager.setParentBusStopLocation(context, stopLocation)
         }
     }
 
+
+    // Set Parent Stop Location
     fun getStopLocation() = viewModelScope.launch {
         try {
             PortalManager.getParentBusStopLocation(context).collectLatest { stopLocation ->
-               _stopLocation.value = stopLocation
+                _stopLocation.value = stopLocation
             }
         } catch (e: Exception) {
             e.printStackTrace()
         }
     }
 
-    fun setStopLocationToFireStore(busStop: BusStop) = viewModelScope.launch {
+
+    // Set Parent Stop Location to FireStore
+    fun setStopLocationToFireStore(busStop: BusStop) = viewModelScope.launch(Dispatchers.IO) {
         userRepository.setBusStopLocation(busStop)
     }
+
 
 }

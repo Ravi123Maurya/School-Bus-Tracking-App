@@ -2,26 +2,45 @@ package com.ravi.busmanagementt.data.repository
 
 import android.util.Log
 import com.google.android.gms.maps.model.LatLng
+import com.google.firebase.Firebase
+import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthException
+import com.google.firebase.auth.auth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import com.google.firebase.database.core.UserWriteRecord
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.GeoPoint
+import com.google.firebase.functions.FirebaseFunctions
+import com.google.firebase.functions.functions
 import com.ravi.busmanagementt.BuildConfig
 import com.ravi.busmanagementt.data.remote.DirectionsApiService
 import com.ravi.busmanagementt.data.remote.decodePolyline
 import com.ravi.busmanagementt.domain.model.BusAndDriver
 import com.ravi.busmanagementt.domain.model.BusStop
+import com.ravi.busmanagementt.domain.model.Caretaker
 import com.ravi.busmanagementt.domain.model.Parent
 import com.ravi.busmanagementt.domain.repository.AdminRepository
 import com.ravi.busmanagementt.utils.Resource
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
+import java.util.Scanner
 import javax.inject.Inject
 
 class AdminRepositoryImpl @Inject constructor(
@@ -135,54 +154,57 @@ class AdminRepositoryImpl @Inject constructor(
             try {
                 val busSnapshot =
                     fireStore.collection("buses").get().await()
-                val busList = busSnapshot.documents.mapNotNull { busDoc ->
-                    try {
-                        val busId = busDoc.getString("busId")
-                        val email = busDoc.getString("email")
-                        if (busId == null || email == null) return@mapNotNull null
-                        val busName = busDoc.getString("busName") ?: "No Name"
-                        val driverName = busDoc.getString("driverName") ?: "No Name"
-                        val routesArray = busDoc.get("routes") as? List<Map<String, Any>>
-                        val routes = mutableListOf<BusStop>()
+                val busList = withContext(Dispatchers.Default) {
+                    busSnapshot.documents.mapNotNull { busDoc ->
+                        try {
+                            val busId = busDoc.getString("busId")
+                            val email = busDoc.getString("email")
+                            if (busId == null || email == null) return@mapNotNull null
+                            val busName = busDoc.getString("busName") ?: "No Name"
+                            val driverName = busDoc.getString("driverName") ?: "No Name"
+                            val routesArray = busDoc.get("routes") as? List<Map<String, Any>>
+                            val routes = mutableListOf<BusStop>()
 
-                        if (routesArray != null) {
-                            for (routeMap in routesArray) {
-                                try {
-                                    val stopName = routeMap["stopName"] as? String ?: "No Stop Name"
-                                    val locationName = routeMap["location"] as? String ?: "N/A"
-                                    val coordinates = routeMap["geoPoint"] as? GeoPoint
-                                    if (coordinates != null) {
-                                        routes.add(
-                                            BusStop(
-                                                stopName = stopName,
-                                                location = locationName,
-                                                geoPoint = coordinates
+                            if (routesArray != null) {
+                                for (routeMap in routesArray) {
+                                    try {
+                                        val stopName =
+                                            routeMap["stopName"] as? String ?: "No Stop Name"
+                                        val locationName = routeMap["location"] as? String ?: "N/A"
+                                        val coordinates = routeMap["geoPoint"] as? GeoPoint
+                                        if (coordinates != null) {
+                                            routes.add(
+                                                BusStop(
+                                                    stopName = stopName,
+                                                    location = locationName,
+                                                    geoPoint = coordinates
+                                                )
                                             )
+                                        }
+                                    } catch (e: Exception) {
+                                        Log.d(
+                                            "AdminRepositoryImpl",
+                                            "Exception - Error passing routeMap: ${e.message}"
                                         )
                                     }
-                                } catch (e: Exception) {
-                                    Log.d(
-                                        "AdminRepositoryImpl",
-                                        "Exception - Error passing routeMap: ${e.message}"
-                                    )
                                 }
                             }
+                            Log.d("AdminRepositoryImpl", "routes: $routes")
+                            BusAndDriver(
+                                busId = busId,
+                                driverName = driverName,
+                                email = email,
+                                id = -1,
+                                password = "",
+                                routes = routes,
+                            )
+
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                            null
                         }
-                        Log.d("AdminRepositoryImpl", "routes: $routes")
-                        BusAndDriver(
-                            busId = busId,
-                            driverName = driverName,
-                            email = email,
-                            id = -1,
-                            password = "",
-                            routes = routes,
-                        )
 
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                        null
                     }
-
                 }
                 emit(Resource.Success(busList))
             } catch (e: Exception) {
@@ -198,32 +220,34 @@ class AdminRepositoryImpl @Inject constructor(
             try {
                 val parentsSnapshot =
                     fireStore.collection("parents").get().await()
-                val parentList = parentsSnapshot.documents.mapNotNull { parentDoc ->
-                    try {
-                        val parentName = parentDoc.getString("name") ?: "No Name"
-                        val email = parentDoc.getString("email")
-                        val assignedBusId = parentDoc.getString("assignedBusId")
-                        val stopName = parentDoc.getString("stopName") ?: ""
-                        val location = parentDoc.getString("location") ?: ""
-                        val busStopLocation =
-                            parentDoc.getGeoPoint("busStopLocation") ?: GeoPoint(0.0, 0.0)
-                        if (email != null && assignedBusId != null) {
-                            Parent(
-                                parentId = parentDoc.id,
-                                name = parentName,
-                                email = email,
-                                assignedBusId = assignedBusId,
-                                busStopLocation = busStopLocation,
-                                password = "",
-                                stopName = stopName,
-                                location = location
-                            )
-                        } else {
+                val parentList = withContext(Dispatchers.Default) {
+                    parentsSnapshot.documents.mapNotNull { parentDoc ->
+                        try {
+                            val parentName = parentDoc.getString("name") ?: "No Name"
+                            val email = parentDoc.getString("email")
+                            val assignedBusId = parentDoc.getString("assignedBusId")
+                            val stopName = parentDoc.getString("stopName") ?: ""
+                            val location = parentDoc.getString("location") ?: ""
+                            val busStopLocation =
+                                parentDoc.getGeoPoint("busStopLocation") ?: GeoPoint(0.0, 0.0)
+                            if (email != null && assignedBusId != null) {
+                                Parent(
+                                    parentId = parentDoc.id,
+                                    name = parentName,
+                                    email = email,
+                                    assignedBusId = assignedBusId,
+                                    busStopLocation = busStopLocation,
+                                    password = "",
+                                    stopName = stopName,
+                                    location = location
+                                )
+                            } else {
+                                null
+                            }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
                             null
                         }
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                        null
                     }
                 }
                 emit(Resource.Success(parentList))
@@ -241,20 +265,23 @@ class AdminRepositoryImpl @Inject constructor(
 
             val valueEventListener = object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    val busesStatusMap = mutableMapOf<String, Boolean>()
+                    this@callbackFlow.launch(Dispatchers.Default) {
+                        val busesStatusMap = mutableMapOf<String, Boolean>()
 
-                    for (childSnapshot in snapshot.children) {
-                        try {
-                            val busId = childSnapshot.key
-                            val isLive = childSnapshot.getValue(Boolean::class.java)
-                            if (busId != null && isLive != null) {
-                                busesStatusMap[busId] = isLive
+                        for (childSnapshot in snapshot.children) {
+                            try {
+                                val busId = childSnapshot.key
+                                val isLive = childSnapshot.getValue(Boolean::class.java)
+                                if (busId != null && isLive != null) {
+                                    busesStatusMap[busId] = isLive
+                                }
+                            } catch (e: Exception) {
+                                Log.d("AdminRepositoryImpl", "Exception: ${e.message}")
                             }
-                        } catch (e: Exception) {
-                            Log.d("AdminRepositoryImpl", "Exception: ${e.message}")
                         }
+                        trySend(busesStatusMap)
                     }
-                    trySend(busesStatusMap)
+
                 }
 
                 override fun onCancelled(error: DatabaseError) {
@@ -278,15 +305,18 @@ class AdminRepositoryImpl @Inject constructor(
             // 1. Initial Load (Get current state once)
             // This might take a moment, but it's done only once.
             rootRef.get().addOnSuccessListener { snapshot ->
-                snapshot.children.forEach { busSnapshot ->
-                    val busId = busSnapshot.key ?: return@forEach
-                    val locations = busSnapshot.children.mapNotNull {
-                        it.getValue(RealtimeLocation::class.java)
-                    }.toMutableList()
-                    localCache[busId] = locations
+                this@callbackFlow.launch(Dispatchers.Default) {
+                    snapshot.children.forEach { busSnapshot ->
+                        val busId = busSnapshot.key ?: return@forEach
+                        val locations = busSnapshot.children.mapNotNull {
+                            it.getValue(RealtimeLocation::class.java)
+                        }.toMutableList()
+                        localCache[busId] = locations
+                    }
+                    // Emit initial state
+                    trySend(localCache.toMap())
                 }
-                // Emit initial state
-                trySend(localCache.toMap())
+
 
             }.addOnFailureListener {
                 close(it)
@@ -294,37 +324,51 @@ class AdminRepositoryImpl @Inject constructor(
 
             val childEventListener = object : com.google.firebase.database.ChildEventListener {
                 override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
-                    // Logic handles new buses appearing
-                    val busId = snapshot.key ?: return
-                    if (localCache.containsKey(busId)) return
+                    this@callbackFlow.launch {
+                        // Logic handles new buses appearing
+                        val busId = snapshot.key ?: return@launch
+                        if (localCache.containsKey(busId)) return@launch
 
-                    val list = snapshot.children.mapNotNull { it.getValue(RealtimeLocation::class.java) }.toMutableList()
-                    synchronized(localCache) {
-                        localCache[busId] = list
-                        trySend(localCache.toMap())
+                        val list =
+                            snapshot.children.mapNotNull { it.getValue(RealtimeLocation::class.java) }
+                                .toMutableList()
+                        synchronized(localCache) {
+                            localCache[busId] = list
+                            trySend(localCache.toMap())
+                        }
                     }
+
                 }
 
                 override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
-                    // Logic handles existing bus updates
-                    val busId = snapshot.key ?: return
-                    // Still downloads full list of THIS bus, but avoids the other 49.
-                    val list = snapshot.children.mapNotNull { it.getValue(RealtimeLocation::class.java) }.toMutableList()
+                    this@callbackFlow.launch(Dispatchers.Default) {
+                        // Logic handles existing bus updates
+                        val busId = snapshot.key ?: return@launch
+                        // Still downloads full list of THIS bus, but avoids the other 49.
+                        val list =
+                            snapshot.children.mapNotNull { it.getValue(RealtimeLocation::class.java) }
+                                .toMutableList()
 
-                    synchronized(localCache) {
-                        localCache[busId] = list
-                        trySend(localCache.toMap())
+                        synchronized(localCache) {
+                            localCache[busId] = list
+                            trySend(localCache.toMap())
+                        }
                     }
+
                 }
 
                 override fun onChildRemoved(snapshot: DataSnapshot) {}
                 override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
-                override fun onCancelled(error: DatabaseError) { close(error.toException()) }
+                override fun onCancelled(error: DatabaseError) {
+                    close(error.toException())
+                }
             }
 
             rootRef.addChildEventListener(childEventListener)
             awaitClose { rootRef.removeEventListener(childEventListener) }
         }
+
+
     }
 
     override suspend fun updateParent(parent: Parent): Flow<Resource<String>> {
@@ -391,25 +435,21 @@ class AdminRepositoryImpl @Inject constructor(
             queryOptions["waypoints"] = waypointsString
         }
 
-        Log.d("DirectionsAPI", "Requesting Directions with options: $queryOptions")
 
         try {
-            // 4. Make the call with the single map object
-            val response = directionsApiService.getDirections(queryOptions)
+            withContext(Dispatchers.IO) {
+                // Make the call with the single map object
+                val response = directionsApiService.getDirections(queryOptions)
 
-            if (response.routes.isNotEmpty()) {
-                val encodedPolyline = response.routes.first().overview_polyline.points
-                Log.d("DirectionsAPI", "Success: Route found!")
-                return decodePolyline(encodedPolyline)
-            } else {
-                Log.e(
-                    "DirectionsAPI",
-                    "Error: API returned no routes. Check coordinates and API key."
-                )
+                if (response.routes.isNotEmpty()) {
+                    val encodedPolyline = response.routes.first().overview_polyline.points
+                    return@withContext decodePolyline(encodedPolyline)
+                } else {
+
+                }
             }
         } catch (e: Exception) {
             // This will catch network errors (like HTTP 400) or JSON parsing errors.
-            Log.e("DirectionsAPI", "Error fetching directions: ${e.message}", e)
         }
         return emptyList()
     }
@@ -424,27 +464,30 @@ class AdminRepositoryImpl @Inject constructor(
                     val routesArray = busDoc.get("routes") as? List<Map<String, Any>> ?: emptyList()
                     val routes = mutableListOf<BusStop>()
                     if (routesArray != null) {
-                        for (routeMap in routesArray) {
-                            try {
-                                val stopName = routeMap["stopName"] as? String ?: "No Stop Name"
-                                val locationName = routeMap["location"] as? String ?: "N/A"
-                                val coordinates = routeMap["geoPoint"] as? GeoPoint
-                                if (coordinates != null) {
-                                    routes.add(
-                                        BusStop(
-                                            stopName = stopName,
-                                            location = locationName,
-                                            geoPoint = coordinates
+                        withContext(Dispatchers.Default) {
+                            for (routeMap in routesArray) {
+                                try {
+                                    val stopName = routeMap["stopName"] as? String ?: "No Stop Name"
+                                    val locationName = routeMap["location"] as? String ?: "N/A"
+                                    val coordinates = routeMap["geoPoint"] as? GeoPoint
+                                    if (coordinates != null) {
+                                        routes.add(
+                                            BusStop(
+                                                stopName = stopName,
+                                                location = locationName,
+                                                geoPoint = coordinates
+                                            )
                                         )
+                                    }
+                                } catch (e: Exception) {
+                                    Log.d(
+                                        "AdminRepositoryImpl",
+                                        "Exception - Error passing routeMap: ${e.message}"
                                     )
                                 }
-                            } catch (e: Exception) {
-                                Log.d(
-                                    "AdminRepositoryImpl",
-                                    "Exception - Error passing routeMap: ${e.message}"
-                                )
                             }
                         }
+
                     }
                     val busData = BusAndDriver(
                         busId = busDriderId,
@@ -465,33 +508,124 @@ class AdminRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun updateBus(busAndDriver: BusAndDriver): Flow<Resource<String>> {
-       return flow{
-           emit(Resource.Loading())
-           if (busAndDriver.busId.isBlank()) {
-               emit(Resource.Error("Bus ID is missing. Cannot update."))
-               return@flow
-           }
-           try {
-               val busDoc = fireStore.collection("buses").document(busAndDriver.busId)
+    override suspend fun updateBus(
+        busAndDriver: BusAndDriver,
+        adminPassword: String
+    ): Flow<Resource<String>> {
+        return flow {
+            emit(Resource.Loading())
 
-               val updatedBusData = mapOf(
-                   "busId" to busAndDriver.busId,
-                   "email" to busAndDriver.email,
-                   "driverName" to busAndDriver.driverName,
-                   "busName" to busAndDriver.busId,
-                   "routes" to busAndDriver.routes
-               )
-               busDoc.update(updatedBusData).await()
-               emit(Resource.Success("Bus updated successfully"))
-           }catch (e: Exception){
-               e.printStackTrace()
-               emit(Resource.Error(e.localizedMessage ?: "Something went wrong"))
-           }
-       }
+            if (!reAuthenticateAdmin(adminPassword)) {
+                emit(Resource.Error("Couldn't verify admin password"))
+                return@flow
+            }
+
+            if (busAndDriver.busId.isBlank()) {
+                emit(Resource.Error("Bus ID is missing. Cannot update."))
+                return@flow
+            }
+            try {
+
+                if (busAndDriver.password.isNotBlank()) {
+                    Log.d(
+                        "AdminRepositoryImpl",
+                        "Email: ${busAndDriver.email} and Password: ${busAndDriver.password}"
+                    )
+                    val data = hashMapOf(
+                        "email" to busAndDriver.email.trim(),
+                        "newPassword" to busAndDriver.password
+                    )
+                    // Call cloud function and wait for it's result
+                    try {
+                        // Call cloud function and wait for its result
+                        val functions = FirebaseFunctions.getInstance("asia-southeast1")
+                        val result = functions.getHttpsCallable("updateDriverPassword")
+                            .call(data)
+                            .await()
+
+                        // NEW LOGGING: What did the function actually return?
+                        val resultData = result.data as? Map<*, *>
+                        Log.d(
+                            "AdminRepositoryImpl",
+                            "Cloud Function returned SUCCESSFULLY with data: $resultData"
+                        )
+
+                    } catch (e: Exception) {
+                        // This is where your NOT_FOUND error is being caught.
+                        Log.e(
+                            "AdminRepositoryImpl",
+                            "Cloud Function FAILED with exception: ${e.message}",
+                            e
+                        )
+                        return@flow
+                    }
+
+                }
+                val busDoc = fireStore.collection("buses").document(busAndDriver.busId)
+
+                val updatedBusData = mapOf(
+                    "busId" to busAndDriver.busId,
+                    "email" to busAndDriver.email,
+                    "driverName" to busAndDriver.driverName,
+                    "busName" to busAndDriver.busId,
+                    "routes" to busAndDriver.routes
+                )
+                busDoc.update(updatedBusData).await()
+                emit(Resource.Success("Updated successfully"))
+            } catch (e: Exception) {
+                e.printStackTrace()
+                emit(Resource.Error(e.localizedMessage ?: "Something went wrong"))
+            }
+        }
     }
 
     override suspend fun deleteBus(busId: String): Flow<Resource<String>> {
         TODO("Not yet implemented")
     }
+
+    override suspend fun addCaretaker(caretaker: Caretaker): Flow<Resource<String>> {
+        return flow {
+            emit(Resource.Loading())
+            try {
+
+                val snapshot = fireStore.collection("caretakers")
+
+                val data = mapOf(
+                    "id" to caretaker.name,
+                    "name" to caretaker.name,
+                    "assignedBusId" to caretaker.assignedBusId
+                )
+
+                snapshot.add(data)
+
+            } catch (e: Exception) {
+                emit(Resource.Error(e.message ?: "Unknown error"))
+            }
+        }
+    }
+
+    override suspend fun updateCaretaker(caretaker: Caretaker): Flow<Resource<String>> {
+        return flow {
+            emit(Resource.Loading())
+            try {
+
+            } catch (e: Exception) {
+                emit(Resource.Error(e.message ?: "Unknown error"))
+            }
+        }
+    }
+
+    private suspend fun reAuthenticateAdmin(password: String): Boolean {
+        val user = firebaseAuth.currentUser
+        val email = user?.email
+        val credentials = EmailAuthProvider.getCredential(email ?: "", password)
+        return try {
+            user?.reauthenticate(credentials)?.await()
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
 }
+
+

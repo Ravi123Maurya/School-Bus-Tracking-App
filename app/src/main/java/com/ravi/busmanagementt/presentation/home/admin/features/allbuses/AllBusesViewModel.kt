@@ -35,9 +35,11 @@ class AllBusesViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val allBusesFlow = adminRepository.getAllBuses()
+        .flowOn(Dispatchers.IO)
         .onEach { Log.d("DEBUG_FLOW", "Buses Flow Emitted: ${it.data?.size}") }
 
     private val liveStatusFlow = adminRepository.getAllLiveBusesStatus()
+        .flowOn(Dispatchers.IO)
         .onEach { Log.d("DEBUG_FLOW", "Live Status Flow Emitted: ${it.keys.size}") }
         .onStart { emit(emptyMap()) }
 
@@ -78,6 +80,7 @@ class AllBusesViewModel @Inject constructor(
                 }
             }
         }
+            .flowOn(Dispatchers.Default)
             .sample(1000L)
             .stateIn(
                 scope = viewModelScope,
@@ -126,6 +129,7 @@ class AllBusesViewModel @Inject constructor(
 
 
     val busesAndRoutesFlow: StateFlow<Resource<List<BusAndDriver>>> = allBusesFlow
+        .flowOn(Dispatchers.IO) // Todo : Redundant flow (allBusesFlow is already on IO)
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),

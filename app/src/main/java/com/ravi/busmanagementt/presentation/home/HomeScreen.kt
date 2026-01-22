@@ -110,22 +110,23 @@ fun HomeScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val mapViewState by mapViewModel.viewState.collectAsStateWithLifecycle()
-    val isSharingLocationState by mapViewModel.isSharingLocation.collectAsStateWithLifecycle()
     val realtimeLocation by mapViewModel.realtimeLocationState.collectAsStateWithLifecycle()
-    val allBusesLocations by mapViewModel.realtimeAllBusesLocationState.collectAsStateWithLifecycle()
     val portal by portalViewModel.portal.collectAsStateWithLifecycle()
     val stopLocation by portalViewModel.stopLocation.collectAsStateWithLifecycle()
-    val mapState = mapViewModel.mapState
     val busId by busViewModel.busId.collectAsStateWithLifecycle()
     val busStops by busViewModel.busStops.collectAsStateWithLifecycle()
     val sharingLocationState by mapViewModel.sharingState.collectAsStateWithLifecycle()
-    val driverSharingLocation by mapViewModel.driverSharingLocation.collectAsStateWithLifecycle()
     val hasInternetConnection by mapViewModel.hasInternetConnection.collectAsStateWithLifecycle()
     var isSharingButtonClick by remember { mutableStateOf(false) }
     var hasLogoutClick by remember { mutableStateOf(false) }
     val busEta by mapViewModel.eta.collectAsStateWithLifecycle()
     val remainingDistance by mapViewModel.remainingDistance.collectAsStateWithLifecycle()
-
+    val liveLocationsPoints = remember(realtimeLocation) { realtimeLocation?.map {
+        LatLng(
+            it.latitude,
+            it.longitude
+        )
+    } }
     //Testing
     val busRoute by mapViewModel.busRouteLatLng.collectAsStateWithLifecycle()
 
@@ -159,11 +160,11 @@ fun HomeScreen(
         mapViewModel.busStops.value = busStops
     }
     LaunchedEffect(busId) {
-
-        busId?.let {
-            mapViewModel.getLocationUpdates(it)
-
-        }
+        mapViewModel.busId.value = busId
+//        busId?.let {
+//            mapViewModel.getLocationUpdates(it)
+//
+//        }
     }
     LaunchedEffect(newBusId) {
         Log.d("HomeScreen", "NavBusId: $newBusId")
@@ -179,7 +180,7 @@ fun HomeScreen(
         onPermissionGranted = {
 
             HomeScreenContent(
-                busRoute = busRoute,
+                busRoute = busRoute, // Testing
                 hasInternetConnection = hasInternetConnection,
                 portal = portal?.value ?: "No Value",
                 busId = busId,
@@ -194,12 +195,7 @@ fun HomeScreen(
                 userLocation = mapViewState.userLocation,
                 parentStopLocation = stopLocation,
                 busStopPoints = busStops,
-                liveLocationPoints = realtimeLocation?.map {
-                    LatLng(
-                        it.latitude,
-                        it.longitude
-                    )
-                },
+                liveLocationPoints = liveLocationsPoints,
                 logoutClick = {
                     hasLogoutClick = true
                 },
@@ -274,7 +270,7 @@ fun HomeScreen(
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 private fun HomeScreenContent(
-    busRoute: List<LatLng>,
+    busRoute: List<LatLng>, // Testing
     hasInternetConnection: Boolean,
     portal: String,
     busId: String? = null,
@@ -361,7 +357,7 @@ private fun HomeScreenContent(
 
                     // Only for Driver
                     if (portal == Portals.DRIVER.value) {
-                        DriverTestingButton(routePoints = busRoute)
+                        DriverTestingButton(routePoints = busRoute) // Testing
                         Spacer(Modifier.height(16.dp))
                         StartStopButton(
                             isLocationPointsEmpty = liveLocationPoints.isNullOrEmpty(),
@@ -383,7 +379,7 @@ private fun HomeScreenContent(
                         AdminPortal(navController = navController)
                     }
                     if (portal == Portals.CARETAKER.value) {
-                        CaretakerScreen(navController = navController)
+                        CaretakerScreen()
                     }
 
 

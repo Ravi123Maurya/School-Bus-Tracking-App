@@ -37,7 +37,7 @@ class AuthViewModel @Inject constructor(
     val email = firebaseAuth.currentUser?.email
 
     init {
-        if (firebaseAuth.currentUser != null){
+        if (firebaseAuth.currentUser != null) {
             _loginState.value = AuthState.Success("VMSuccess: Login Successful")
         }
     }
@@ -52,13 +52,11 @@ class AuthViewModel @Inject constructor(
                 }
 
                 is Resource.Error -> {
-                    Log.e("AuthCheck", result.message ?: "Idk - error")
                     _loginState.value = AuthState.Error(result.message ?: "Login failed")
                     logout()
                 }
 
                 is Resource.Loading -> {
-                    Log.d("AuthCheck", "Auth Login - Loading")
                     _loginState.value = AuthState.Loading
                 }
             }
@@ -67,10 +65,8 @@ class AuthViewModel @Inject constructor(
     }
 
     private fun setFcmToken() {
-        Log.d("AuthViewModel", " SetFCMToken Called")
         var token: String? = null
         FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
-            Log.d("AuthViewModel", " SetFCMToken Toke: ${task.result}")
             if (!task.isSuccessful) {
                 return@addOnCompleteListener
             } else {
@@ -79,6 +75,7 @@ class AuthViewModel @Inject constructor(
             }
         }
     }
+
 
 
     fun logout() = viewModelScope.launch {

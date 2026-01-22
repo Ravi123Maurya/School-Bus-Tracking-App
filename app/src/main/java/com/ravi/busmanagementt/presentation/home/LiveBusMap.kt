@@ -1,5 +1,6 @@
 package com.ravi.busmanagementt.presentation.home
 
+import android.os.StrictMode
 import android.util.Log
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animate
@@ -31,6 +32,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -67,6 +69,8 @@ import com.ravi.busmanagementt.domain.model.BusStop
 import com.ravi.busmanagementt.presentation.components.CameraAnimateFaB
 import com.ravi.busmanagementt.ui.theme.AppColors
 import com.ravi.busmanagementt.utils.showToast
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.pow
@@ -185,11 +189,50 @@ fun LiveBusMap(
         selectedBusLatLng?.let { mapState.animateCamera(it, 12f) }
     }
 
+
+    val zoomLvl = mapState.cameraPositionState.position.zoom
+    val cameraTarget = mapState.cameraPositionState.position.target
+    var closestBusId by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(cameraTarget, zoomLvl) {
+        withContext(Dispatchers.Default){
+            if (zoomLvl < 15f) return@withContext
+            var nearestId: String? = null
+            var minDistance = Double.MAX_VALUE
+
+            allBusesCurrentLocations?.forEach { (busId, location) ->
+                if (location != null) {
+
+                    val dist = calculateDistance(
+                        cameraTarget.latitude,
+                        cameraTarget.longitude,
+                        location.latitude,
+                        location.longitude
+                    )
+
+                    if (dist < 500 && dist < minDistance) {
+                        minDistance = dist
+                        nearestId = busId
+                    }
+                }
+            }
+            closestBusId = nearestId
+        }
+    }
+
     Box(
         modifier = Modifier
             .animateContentSize()
             .then(customModifier)
     ) {
+
+        DisposableEffect(Unit) {
+            val oldPolicy = StrictMode.allowThreadDiskReads()
+            onDispose {
+                StrictMode.setThreadPolicy(oldPolicy)
+            }
+        }
+
         GoogleMap(
             cameraPositionState = mapState.cameraPositionState,
             modifier = Modifier.fillMaxSize(),
@@ -292,31 +335,7 @@ fun LiveBusMap(
 
             if (selectedBusId != null) {
 
-                val zoomLvl = mapState.cameraPositionState.position.zoom
-                val cameraTarget = mapState.cameraPositionState.position.target
-                val closestBusId = remember(cameraTarget, zoomLvl) {
-                    if (zoomLvl < 15f) return@remember null
-                    var nearestId: String? = null
-                    var minDistance = Double.MAX_VALUE
 
-                    allBusesCurrentLocations?.forEach { (busId, location) ->
-                        if (location != null) {
-
-                            val dist = calculateDistance(
-                                cameraTarget.latitude,
-                                cameraTarget.longitude,
-                                location.latitude,
-                                location.longitude
-                            )
-
-                            if (dist < 500 && dist < minDistance) {
-                                minDistance = dist
-                                nearestId = busId
-                            }
-                        }
-                    }
-                    nearestId
-                }
                 allBusesCurrentLocations?.forEach { (busId, location) ->
                     key(busId) {
                         if (location != null) {
@@ -413,8 +432,6 @@ fun LiveBusMap(
                         }
                     }
                 }
-
-
             }
 
 

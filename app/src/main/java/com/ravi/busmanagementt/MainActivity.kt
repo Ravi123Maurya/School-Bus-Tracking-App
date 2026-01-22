@@ -1,6 +1,7 @@
 package com.ravi.busmanagementt
 
 import android.os.Bundle
+import android.os.StrictMode
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -16,9 +17,10 @@ import dagger.hilt.android.AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
 
+        super.onCreate(savedInstanceState)
+
         val mapViewModel: MapViewModel by viewModels()
 
-        super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             BusManagementTheme {

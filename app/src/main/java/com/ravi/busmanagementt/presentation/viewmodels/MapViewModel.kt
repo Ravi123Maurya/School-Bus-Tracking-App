@@ -68,16 +68,13 @@ class MapViewModel @Inject constructor(
     private val _viewState = MutableStateFlow(MapViewState())
     val viewState = _viewState.asStateFlow()
 
-    // 1. Lightweight: Just the single latest point for every bus (50 objects)
     private val _allBusesCurrentLocations =
         MutableStateFlow<Map<String, RealtimeLocation?>>(emptyMap())
     val allBusesCurrentLocations = _allBusesCurrentLocations.asStateFlow()
 
-    // 2. Heavy: Full history ONLY for the selected bus (1 list of ~1000 objects)
     private val _rawFullData = MutableStateFlow<Map<String, List<RealtimeLocation>>>(emptyMap())
     val navBusId = MutableStateFlow<String?>(null)
 
-    // 2. Derive selectedBusPath automatically
     val selectedBusPath: StateFlow<List<LatLng>> =
         combine(_rawFullData, navBusId) { data, selectedId ->
             // Auto-select logic if nothing selected
@@ -88,7 +85,9 @@ class MapViewModel @Inject constructor(
             } else {
                 emptyList()
             }
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        }
+            .flowOn(Dispatchers.Default)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _allBusesStopsLatLng = MutableStateFlow<Map<String, List<BusStop>>>(emptyMap())
     val allBusesStopsLatLng = _allBusesStopsLatLng.asStateFlow()
@@ -107,11 +106,13 @@ class MapViewModel @Inject constructor(
                 singleBusStopList.key to route
             }
             map.toMap()
-        }.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyMap()
-        )
+        }
+            .flowOn(Dispatchers.Default)
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = emptyMap()
+            )
     private val _realtimeLocationState = MutableStateFlow<List<RealtimeLocation>?>(null)
     val realtimeLocationState = _realtimeLocationState.asStateFlow()
 
@@ -123,12 +124,15 @@ class MapViewModel @Inject constructor(
         val latLntList = stops.map { stop ->
             LatLng(stop.geoPoint.latitude, stop.geoPoint.longitude)
         }
+        Log.d("Relaunch", "getDirectionRoute 2")
         adminRepository.getDirectionsRoute(latLntList)
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = emptyList()
-    )
+    }
+        .flowOn(Dispatchers.Default)
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
 
     private val _realtimeAllBusesLocationState =
         MutableStateFlow<Map<String, List<RealtimeLocation>>?>(null)
@@ -139,6 +143,7 @@ class MapViewModel @Inject constructor(
     val driverSharingLocation = locationSharingStateManager.locationPoints.asStateFlow()
     val hasInternetConnection: StateFlow<Boolean> =
         connectivityManager.networkStatus
+            .flowOn(Dispatchers.Default)
             .map { it == NetworkStatus.Available }
             .stateIn(
                 scope = viewModelScope,
@@ -160,9 +165,19 @@ class MapViewModel @Inject constructor(
     val eta = MutableStateFlow("No data")
     val remainingDistance = MutableStateFlow("No data")
 
+    val currentRealtimeLocationLatLng: StateFlow<List<LatLng>> =
+        realtimeLocationState.map { location ->
+            location?.map { LatLng(it.latitude, it.longitude) } ?: emptyList()
+        }
+            .flowOn(Dispatchers.Default)
+            .stateIn(
+                viewModelScope,
+                SharingStarted.WhileSubscribed(5000),
+                emptyList()
+            )
     val mapContent: @Composable () -> Unit = movableContentOf {
         val currentViewState by viewState.collectAsState()
-        val currentRealtimeLocation by realtimeLocationState.collectAsState()
+        val currentRealtimeLocation by currentRealtimeLocationLatLng.collectAsState()
         val animateToThisBus by navBusId.collectAsState()
         val busIcon by busMarkerIcon.collectAsState()
         val allBusesRoutes by allBusesRoutesLatLng.collectAsState()
@@ -182,15 +197,9 @@ class MapViewModel @Inject constructor(
             initialMarkerPoint = currentViewState.initialLocation,
             userLocation = currentViewState.userLocation,
             stopLocation = parentStopLocation,
-            liveLocationPoints = if (!isAdmin) currentRealtimeLocation?.map {
-                LatLng(
-                    it.latitude,
-                    it.longitude
-                )
-            } else null,
+            liveLocationPoints = if (!isAdmin) currentRealtimeLocation else null,
             busRouteLatLng = busRouteLatLng,
             busStops = busStops,
-
             allBusesCurrentLocations = if (isAdmin) currentLocationsMap else null,
             selectedBusPath = if (isAdmin) currentSelectedPath else null,
             allBusesRoutesLatLng = if (isAdmin) allBusesRoutes else null,
@@ -206,6 +215,9 @@ class MapViewModel @Inject constructor(
         )
     }
 
+
+    val busId = MutableStateFlow<String?>(null)
+
     init {
         // Start User Location
         startLocationUpdates()
@@ -220,6 +232,12 @@ class MapViewModel @Inject constructor(
                 }
             }
         }
+
+
+        // Get bus Location updated by busId
+        busId.value?.let {
+            getLocationUpdates(it)
+        }
     }
 
 
@@ -227,6 +245,7 @@ class MapViewModel @Inject constructor(
 
     fun startLocationUpdates() {
         realtimeLocationRepository.startLocationUpdates()
+            .flowOn(Dispatchers.IO)
             .onEach { location ->
                 val currentLocation = LatLng(location.latitude, location.longitude)
                 Log.d("MapViewModel", "Device Current Location: $currentLocation")
@@ -311,27 +330,26 @@ class MapViewModel @Inject constructor(
             .conflate()
             .sample(1000L)
             .onEach { data ->
-                // 1. Update Raw Data (triggers the combine above)
-                _rawFullData.value = data
+                withContext(Dispatchers.Default) {
+                    // 1. Update Raw Data (triggers the combine above)
+                    _rawFullData.value = data
 
-                // 2. Update Markers (Lightweight)
-                val markersMap = data.mapValues { it.value.lastOrNull() }
-                _allBusesCurrentLocations.value = markersMap
+                    // 2. Update Markers (Lightweight)
+                    val markersMap = data.mapValues { it.value.lastOrNull() }
+                    _allBusesCurrentLocations.value = markersMap
 
-                // If no bus selected yet, select the first one to trigger the combine flow defaults
-                if (navBusId.value == null && data.isNotEmpty()) {
-                    navBusId.value = data.keys.first()
+                    // If no bus selected yet, select the first one to trigger the combine flow defaults
+                    if (navBusId.value == null && data.isNotEmpty()) {
+                        navBusId.value = data.keys.first()
+                    }
                 }
+
             }.catch {
 
             }.launchIn(viewModelScope)
     }
 
-    fun onBusClick(busId: String) {
-        navBusId.value = busId
-    }
-
-    fun getBusStopsByBusId(busId: String) = viewModelScope.launch {
+    fun getBusStopsByBusId(busId: String) = viewModelScope.launch(Dispatchers.IO) {
         firestoreBusRepository.getBusRouteStops(busId).collect { busStops ->
             _busStopsState.value = busStops
         }
@@ -340,11 +358,14 @@ class MapViewModel @Inject constructor(
     private fun startAdminDataUpdates() {
 
         adminRepository.getAllBuses()
+            .flowOn(Dispatchers.IO)
             .onEach { buses ->
-                val stopLists = buses.data?.map { busesStops ->
-                    busesStops.busId to busesStops.routes
+                withContext(Dispatchers.Default) {
+                    val stopLists = buses.data?.map { busesStops ->
+                        busesStops.busId to busesStops.routes
+                    }
+                    _allBusesStopsLatLng.value = stopLists?.toMap() ?: emptyMap()
                 }
-                _allBusesStopsLatLng.value = stopLists?.toMap() ?: emptyMap()
             }
             .catch { }
             .launchIn(viewModelScope)

@@ -23,9 +23,11 @@ import com.ravi.busmanagementt.data.datastore.UserPrefManager
 import com.ravi.busmanagementt.data.serivce.LocationSharingStateManager
 import com.ravi.busmanagementt.domain.repository.RealtimeLocationRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
@@ -41,8 +43,6 @@ class LocationRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context,
     private val firebaseDatabase: FirebaseDatabase,
     private val firebaseAuth: FirebaseAuth,
-    private val locationSharingStateManager: LocationSharingStateManager,
-    private val userPrefManager: UserPrefManager
 ) : RealtimeLocationRepository {
 
     private val fusedLocationProviderClient =
@@ -99,10 +99,13 @@ class LocationRepositoryImpl @Inject constructor(
 
             val valueEventListener = object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    val locations = snapshot.children.mapNotNull { dataSnapshot ->
-                        dataSnapshot.getValue(RealtimeLocation::class.java)
+                    this@callbackFlow.launch(Dispatchers.Default) {
+                        val locations = snapshot.children.mapNotNull { dataSnapshot ->
+                            dataSnapshot.getValue(RealtimeLocation::class.java)
+                        }
+                        trySend(locations)
                     }
-                    trySend(locations)
+
                 }
 
                 override fun onCancelled(error: DatabaseError) {

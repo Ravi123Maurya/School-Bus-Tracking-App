@@ -154,50 +154,6 @@ fun FeatureCard(
     }
 }
 
-// Alternative: Compact Card Version
-@Composable
-fun CompactFeatureCard(
-    icon: ImageVector = Icons.Default.DirectionsBus,
-    label: String = "Feature",
-    cardColor: Color = Color(0xFF3B82F6),
-    modifier: Modifier = Modifier,
-    onCardClick: () -> Unit = {}
-) {
-    Card(
-        modifier = modifier.height(100.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = cardColor
-        ),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
-        onClick = onCardClick
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Icon(
-                modifier = Modifier.size(32.dp),
-                imageVector = icon,
-                contentDescription = label,
-                tint = Color.White
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = label,
-                color = Color.White,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 13.sp,
-                textAlign = TextAlign.Center,
-                maxLines = 2
-            )
-        }
-    }
-}
-
 
 // Feature Data Model
 data class AdminFeature(

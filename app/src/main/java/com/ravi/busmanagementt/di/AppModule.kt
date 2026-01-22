@@ -9,11 +9,13 @@ import com.ravi.busmanagementt.BuildConfig
 import com.ravi.busmanagementt.data.remote.DirectionsApiService
 import com.ravi.busmanagementt.data.repository.AdminRepositoryImpl
 import com.ravi.busmanagementt.data.repository.AuthRepositoryImpl
+import com.ravi.busmanagementt.data.repository.CaretakerRepositoryImpl
 import com.ravi.busmanagementt.data.repository.FirestoreBusRepositoryImpl
 import com.ravi.busmanagementt.data.repository.LocationRepositoryImpl
 import com.ravi.busmanagementt.data.repository.UserRepositoryImpl
 import com.ravi.busmanagementt.domain.repository.AdminRepository
 import com.ravi.busmanagementt.domain.repository.AuthRepository
+import com.ravi.busmanagementt.domain.repository.CaretakerRepository
 import com.ravi.busmanagementt.domain.repository.FirestoreBusRepository
 import com.ravi.busmanagementt.domain.repository.RealtimeLocationRepository
 import com.ravi.busmanagementt.domain.repository.UserRepository
@@ -98,6 +100,13 @@ abstract class RepositoryModule { // Must be an 'abstract class' for @Binds meth
     abstract fun bindAdminRepository(
         adminRepositoryImpl: AdminRepositoryImpl
     ): AdminRepository
+
+
+    @Binds
+    @Singleton
+    abstract fun bindCaretakerRepository(
+        caretakerRepositoryImpl: CaretakerRepositoryImpl
+    ): CaretakerRepository
 
 }
 

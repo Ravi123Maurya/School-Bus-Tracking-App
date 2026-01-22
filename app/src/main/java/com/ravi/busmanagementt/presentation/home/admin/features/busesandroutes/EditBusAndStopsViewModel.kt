@@ -6,6 +6,7 @@ import com.ravi.busmanagementt.domain.model.BusAndDriver
 import com.ravi.busmanagementt.domain.repository.AdminRepository
 import com.ravi.busmanagementt.utils.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
@@ -32,7 +33,7 @@ class EditBusAndStopsViewModel @Inject constructor(
 
 
     fun getBusData(busId: String) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             adminRepository.getBusWithId(busId).collect { result ->
                 when (result) {
                     is Resource.Error -> {
@@ -53,9 +54,9 @@ class EditBusAndStopsViewModel @Inject constructor(
         }
     }
 
-    fun updateBusData(busData: BusAndDriver) {
+    fun updateBusData(busData: BusAndDriver, adminPass: String) {
         viewModelScope.launch {
-            adminRepository.updateBus(busData).collect { result ->
+            adminRepository.updateBus(busData, adminPass).collect { result ->
                 when(result){
                     is Resource.Error -> {
                         _updateBusDataState.value = UpdateBusDataState.Error(result.message ?: "Unknown error")

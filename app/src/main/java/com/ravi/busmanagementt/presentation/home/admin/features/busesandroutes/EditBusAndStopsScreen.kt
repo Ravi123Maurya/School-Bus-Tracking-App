@@ -1,5 +1,6 @@
 package com.ravi.busmanagementt.presentation.home.admin.features.busesandroutes
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -11,7 +12,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -36,6 +36,7 @@ import com.ravi.busmanagementt.presentation.home.admin.features.addriverbus.Rout
 import com.ravi.busmanagementt.presentation.home.admin.features.addriverbus.RouteStopForm
 import com.ravi.busmanagementt.presentation.home.admin.features.addriverbus.hasErrors
 import com.ravi.busmanagementt.presentation.home.admin.features.addriverbus.validateRouteStop
+import com.ravi.busmanagementt.presentation.viewmodels.PortalViewModel
 import com.ravi.busmanagementt.ui.theme.AppColors
 import com.ravi.busmanagementt.utils.showToast
 
@@ -44,13 +45,15 @@ data class EditBusState(
     val busId: String = "", // Todo: BusId and Email cannot be changed (TextField is read-only, disabled, editable in future if needed)
     val driverName: String = "",
     val email: String = "",
+    val password: String = "",
     val routes: List<BusStop> = emptyList()
 )
 
 data class EditBusErrors(
     val busIdError: String? = null,
     val driverNameError: String? = null,
-    val emailError: String? = null
+    val emailError: String? = null,
+    val passwordError: String? = null
 )
 
 // Main Screen
@@ -105,6 +108,9 @@ fun EditBusAndStopsScreen(
             UpdateBusDataState.Idle -> {}
             UpdateBusDataState.Loading -> {}
             is UpdateBusDataState.Success -> {
+                if (busId != null) {
+                    editViewModel.getBusData(busId)
+                }
                 context.showToast(state.message)
                 editViewModel.resetAllStates()
                 updatedBusData = null
@@ -164,8 +170,8 @@ fun EditBusAndStopsScreen(
     if (updatedBusData != null) {
         FinalUpdateAlertDialog(
             hasConfirmClicked = updateBusDataState is UpdateBusDataState.Loading,
-            onConfirm = {
-                editViewModel.updateBusData(updatedBusData!!)
+            onConfirm = { password ->
+                editViewModel.updateBusData(updatedBusData!!, adminPass = password)
             },
             onDismiss = {
                 updatedBusData = null
@@ -184,7 +190,7 @@ private fun EditBusAndStopsContent(
 ) {
 
     val context = LocalContext.current
-    var editState by remember {
+    var editState by remember(initialBus) {
         mutableStateOf(
             EditBusState(
                 busId = initialBus.busId,
@@ -201,11 +207,13 @@ private fun EditBusAndStopsContent(
     var hasChanges by remember { mutableStateOf(false) }
 
     // Track changes
-    LaunchedEffect(editState) {
+    LaunchedEffect(editState,initialBus ) {
         hasChanges = editState.busId != initialBus.busId ||
                 editState.driverName != initialBus.driverName ||
                 editState.email != initialBus.email ||
-                editState.routes != initialBus.routes
+                editState.routes != initialBus.routes ||
+                editState.password != initialBus.password
+
     }
 
     Column(
@@ -233,6 +241,7 @@ private fun EditBusAndStopsContent(
                     busId = editState.busId,
                     driverName = editState.driverName,
                     email = editState.email,
+                    password = editState.password,
                     errors = errors,
                     onBusIdChange = {
                         editState = editState.copy(busId = it)
@@ -245,6 +254,10 @@ private fun EditBusAndStopsContent(
                     onEmailChange = {
                         editState = editState.copy(email = it)
                         errors = errors.copy(emailError = null)
+                    },
+                    onPasswordChange = {
+                        editState = editState.copy(password = it)
+                        errors = errors.copy(passwordError = null)
                     }
                 )
             }
@@ -314,6 +327,7 @@ private fun EditBusAndStopsContent(
                         busId = editState.busId,
                         driverName = editState.driverName,
                         email = editState.email,
+                        password = editState.password,
                         routes = editState.routes
                     )
                     onSaveClick(updatedBus)
@@ -429,10 +443,12 @@ private fun BusInfoCard(
     busId: String,
     driverName: String,
     email: String,
+    password: String,
     errors: EditBusErrors,
     onBusIdChange: (String) -> Unit,
     onDriverNameChange: (String) -> Unit,
-    onEmailChange: (String) -> Unit
+    onEmailChange: (String) -> Unit,
+    onPasswordChange: (String) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -510,6 +526,27 @@ private fun BusInfoCard(
                 fontSize = 12.sp,
                 color = Color.Gray,
                 modifier = Modifier.padding(start = 4.dp)
+            )
+
+            OutlinedTextField(
+                value = password,
+                onValueChange = onPasswordChange,
+                label = { Text("Password") },
+                placeholder = { Text("Update password") },
+                leadingIcon = {
+                    Icon(Icons.Default.Password, contentDescription = null)
+                },
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Password,
+                    imeAction = ImeAction.Done
+                ),
+                isError = errors.passwordError != null,
+                supportingText = errors.passwordError?.let { { Text(it) } },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                readOnly = false,
+                enabled = true
             )
         }
     }
@@ -902,12 +939,11 @@ private fun AddEditStopDialog(
     @Composable
     private fun FinalUpdateAlertDialog(
         hasConfirmClicked: Boolean = false,
-        onConfirm: () -> Unit = {},
+        onConfirm: (String) -> Unit = {},
         onDismiss: () -> Unit = {}
     ) {
 
-        var verifyPassword by remember { mutableStateOf("") }
-        var hasPasswordVerified by remember(verifyPassword) { mutableStateOf(verifyPassword == "123456") }
+        var password by remember { mutableStateOf("") }
 
         AlertDialog(
             title = {
@@ -918,19 +954,19 @@ private fun AddEditStopDialog(
                     Text("Are you sure you want to update the changes? This action cannot be undone.")
                     Spacer(Modifier.height(16.dp))
                     TextField(
-                        value = verifyPassword,
-                        onValueChange = { verifyPassword = it },
+                        value = password,
+                        onValueChange = { password = it },
                         placeholder = { Text("Enter password to confirm") }
                     )
                 }
             },
             confirmButton = {
                 Button(
-                    onClick = onConfirm,
+                    onClick = { onConfirm(password)},
                     colors = ButtonDefaults.buttonColors(
                         containerColor = AppColors.Primary
                     ),
-                    enabled = hasPasswordVerified,
+                    enabled = password.length > 5,
                 ) {
                     if (hasConfirmClicked) {
                         CircularLoading()
@@ -966,9 +1002,13 @@ private fun AddEditStopDialog(
             errors = errors.copy(emailError = "Invalid email format")
         }
 
+        if (state.password.isNotBlank() && state.password.length < 6) {
+            errors = errors.copy(passwordError = "Password must be at least of 6 characters")
+        }
+
         return errors
     }
 
     private fun EditBusErrors.hasErrors(): Boolean {
-        return busIdError != null || driverNameError != null || emailError != null
+        return busIdError != null || driverNameError != null || emailError != null || passwordError != null
     }

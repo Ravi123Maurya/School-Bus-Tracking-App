@@ -14,5 +14,4 @@ val ACC_PORTAL_KEY = stringPreferencesKey("acc_portal_key")
 val STOP_LOCATION_LAT_KEY = doublePreferencesKey("stop_location_lat_key")
 val STOP_LOCATION_LONG_KEY = doublePreferencesKey("stop_location_long_key")
 
-val EMAIL_KEY = stringPreferencesKey("email_key")
 val BUS_ID_KEY = stringPreferencesKey("bus_id_key")
