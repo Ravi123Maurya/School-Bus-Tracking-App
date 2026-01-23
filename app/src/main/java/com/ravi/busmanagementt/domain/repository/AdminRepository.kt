@@ -35,6 +35,8 @@ interface AdminRepository {
 
 
     suspend fun addCaretaker(caretaker: Caretaker): Flow<Resource<String>>
+
+    suspend fun getAllCaretakers() : Flow<Resource<List<Caretaker>>>
     suspend fun updateCaretaker(caretaker: Caretaker) : Flow<Resource<String>>
 
 }

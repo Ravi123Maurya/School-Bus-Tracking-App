@@ -22,6 +22,7 @@ import com.ravi.busmanagementt.presentation.home.admin.features.allbuses.AllBuse
 import com.ravi.busmanagementt.presentation.home.admin.features.allbuses.BusStopsScreen
 import com.ravi.busmanagementt.presentation.home.admin.features.busesandroutes.BusesAndRoutesScreen
 import com.ravi.busmanagementt.presentation.home.admin.features.busesandroutes.EditBusAndStopsScreen
+import com.ravi.busmanagementt.presentation.home.admin.features.managecaretaker.ManageCaretakerScreen
 import com.ravi.busmanagementt.presentation.home.admin.features.manageparents.ManageParentsScreen
 import com.ravi.busmanagementt.presentation.home.admin.features.reports.ReportsScreen
 import com.ravi.busmanagementt.presentation.onboarding.OnboardingScreen
@@ -141,6 +142,9 @@ fun MainNavGraph(
             BusStopsScreen(navController, mapViewModel, busId = args.busId)
         }
 
+        composable(NavRoutes.MANAGE_CARETAKER_SCREEN) {
+            ManageCaretakerScreen(navController)
+        }
     }
 }
 

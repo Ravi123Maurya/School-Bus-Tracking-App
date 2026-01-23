@@ -1,5 +1,7 @@
 package com.ravi.busmanagementt.presentation.navigation
 
+import com.ravi.busmanagementt.domain.model.Caretaker
+
 object NavRoutes{
     const val MAP_SCREEN: String = "map"
     const val ONBOARDING_SCREEN: String = "onboarding"
@@ -21,6 +23,5 @@ object NavRoutes{
     const val MAIN_SCREENS = "main"
 
     /******** Caretaker **********/
-    const val MARK_ATTENDANCE_SCREEN = "mark_attendance"
-    const val VIEW_CHILDREN_SCREEN = "view_children"
+    const val MANAGE_CARETAKER_SCREEN = "manage_caretaker_screen"
 }

@@ -184,6 +184,7 @@ object AdminFeatures {
             cardColor = Color(0xFF10B981),
             route = NavRoutes.ADD_DRIVER_BUS_SCREEN
         ),
+
         AdminFeature(
             icon = Icons.Default.Route,
             label = "Buses/Routes",
@@ -191,16 +192,17 @@ object AdminFeatures {
             route = NavRoutes.BUSES_AND_ROUTES_SCREEN
         ),
         AdminFeature(
+            icon = Icons.Default.SafetyDivider,
+            label = "Caretakers",
+            cardColor = Color(0xFFEC4899),
+            route = NavRoutes.MANAGE_CARETAKER_SCREEN
+        ),
+        AdminFeature(
             icon = Icons.Default.Assessment,
             label = "Reports",
             cardColor = Color(0xFF06B6D4),
             route = NavRoutes.REPORTS_SCREEN
-        ),
-        AdminFeature(
-            icon = Icons.Default.ChatBubble,
-            label = "Announcement",
-            cardColor = Color(0xFFEC4899),
-            route = ""
         )
+
     )
 }

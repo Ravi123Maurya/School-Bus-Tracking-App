@@ -6,6 +6,7 @@ import com.ravi.busmanagementt.domain.model.Parent
 import com.ravi.busmanagementt.domain.repository.AdminRepository
 import com.ravi.busmanagementt.utils.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -38,7 +39,7 @@ class ManageParentViewModel @Inject constructor(
         getAllBusIds()
     }
 
-    fun addNewParent(parent: Parent) = viewModelScope.launch {
+    fun addNewParent(parent: Parent) = viewModelScope.launch(Dispatchers.IO){
         adminRepository.addParent(parent).collect { result ->
             when (result) {
                 is Resource.Error -> {
