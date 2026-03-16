@@ -16,7 +16,7 @@ The School Bus Tracking App is a versatile application designed to help parents 
 ## Features
 - Four different Portals (Admin, Parent, Driver, and Caretaker)
 - Real-time bus tracking
-- Notifications for bus arrivals and delays
+- Push Notifications for bus arrivals and delays
 - Manage/Update bus, driver, parent, students from Admin Portal
 - User-friendly interface for parents and school administrators
 
@@ -24,7 +24,7 @@ The School Bus Tracking App is a versatile application designed to help parents 
 - Kotlin
 - Jetpack Compose
 - Android SDK
-- Firebase for real-time database
+- Firebase for real-time database, push notification
 - Google Maps API for tracking and location services
 
 ## License
