@@ -233,11 +233,6 @@ class MapViewModel @Inject constructor(
             }
         }
 
-
-        // Get bus Location updated by busId
-        busId.value?.let {
-            getLocationUpdates(it)
-        }
     }
 
 

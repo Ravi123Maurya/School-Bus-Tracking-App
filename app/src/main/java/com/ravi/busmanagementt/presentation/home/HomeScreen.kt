@@ -103,7 +103,7 @@ fun HomeScreen(
     newBusId: String? = null, // todo: animate camera to bus location
     mapViewModel: MapViewModel,
     authViewModel: AuthViewModel,
-    portalViewModel: PortalViewModel = hiltViewModel(),
+    portalViewModel: PortalViewModel,
     busViewModel: BusViewModel = hiltViewModel(),
 ) {
 
@@ -127,6 +127,11 @@ fun HomeScreen(
             it.longitude
         )
     } }
+
+    LaunchedEffect(realtimeLocation) {
+        Log.d("Location Sharing", "RealtimeLocation - ${realtimeLocation?.size}")
+        Log.d("Location Sharing", "LiveLocation - ${liveLocationsPoints?.size}")
+    }
     //Testing
     val busRoute by mapViewModel.busRouteLatLng.collectAsStateWithLifecycle()
 
@@ -161,10 +166,10 @@ fun HomeScreen(
     }
     LaunchedEffect(busId) {
         mapViewModel.busId.value = busId
-//        busId?.let {
-//            mapViewModel.getLocationUpdates(it)
-//
-//        }
+        busId?.let {
+            mapViewModel.getLocationUpdates(it)
+
+        }
     }
     LaunchedEffect(newBusId) {
         Log.d("HomeScreen", "NavBusId: $newBusId")

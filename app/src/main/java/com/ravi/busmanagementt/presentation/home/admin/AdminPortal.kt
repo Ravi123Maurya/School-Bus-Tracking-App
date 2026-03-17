@@ -179,10 +179,10 @@ object AdminFeatures {
             route = NavRoutes.MANAGE_PARENT_SCREEN
         ),
         AdminFeature(
-            icon = Icons.Default.PersonAdd,
-            label = "Add Bus",
+            icon = Icons.Default.ChildCare,
+            label = "Students",
             cardColor = Color(0xFF10B981),
-            route = NavRoutes.ADD_DRIVER_BUS_SCREEN
+            route = NavRoutes.MANAGE_STUDENTS_SCREEN
         ),
 
         AdminFeature(

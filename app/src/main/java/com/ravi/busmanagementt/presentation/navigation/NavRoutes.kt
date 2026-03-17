@@ -22,6 +22,7 @@ object NavRoutes{
 
     const val MAIN_SCREENS = "main"
 
+    const val MANAGE_CARETAKER_SCREEN = "manage_caretaker"
+    const val MANAGE_STUDENTS_SCREEN = "manage_students"
     /******** Caretaker **********/
-    const val MANAGE_CARETAKER_SCREEN = "manage_caretaker_screen"
 }

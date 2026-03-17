@@ -24,6 +24,7 @@ import com.ravi.busmanagementt.presentation.home.admin.features.busesandroutes.B
 import com.ravi.busmanagementt.presentation.home.admin.features.busesandroutes.EditBusAndStopsScreen
 import com.ravi.busmanagementt.presentation.home.admin.features.managecaretaker.ManageCaretakerScreen
 import com.ravi.busmanagementt.presentation.home.admin.features.manageparents.ManageParentsScreen
+import com.ravi.busmanagementt.presentation.home.admin.features.managestudents.ManageStudentScreen
 import com.ravi.busmanagementt.presentation.home.admin.features.reports.ReportsScreen
 import com.ravi.busmanagementt.presentation.onboarding.OnboardingScreen
 import com.ravi.busmanagementt.presentation.profile.ProfileScreen
@@ -31,20 +32,22 @@ import com.ravi.busmanagementt.presentation.settings.SettingsScreen
 import com.ravi.busmanagementt.presentation.viewmodels.AuthState
 import com.ravi.busmanagementt.presentation.viewmodels.AuthViewModel
 import com.ravi.busmanagementt.presentation.viewmodels.MapViewModel
+import com.ravi.busmanagementt.presentation.viewmodels.PortalViewModel
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 
 
 @Composable
 fun NavGraph(
-    mapViewModel: MapViewModel
+    mapViewModel: MapViewModel,
+    portalViewModel: PortalViewModel
 ) {
 
     val authViewModel: AuthViewModel = hiltViewModel()
     val loginState by authViewModel.loginState.collectAsState()
 
     if (loginState is AuthState.Success) {
-        MainNavGraph(mapViewModel, authViewModel)
+        MainNavGraph(mapViewModel, authViewModel, portalViewModel)
     } else {
         AuthNavGraph(authViewModel)
     }
@@ -83,7 +86,8 @@ fun AuthNavGraph(authViewModel: AuthViewModel) {
 @Composable
 fun MainNavGraph(
     mapViewModel: MapViewModel,
-    authViewModel: AuthViewModel
+    authViewModel: AuthViewModel,
+    portalViewModel: PortalViewModel
 ) {
     val navController = rememberNavController()
     NavHost(
@@ -96,6 +100,7 @@ fun MainNavGraph(
                 navController,
                 mapViewModel = mapViewModel,
                 authViewModel = authViewModel,
+                portalViewModel = portalViewModel,
                 newBusId = args.busId
             )
         }
@@ -144,6 +149,9 @@ fun MainNavGraph(
 
         composable(NavRoutes.MANAGE_CARETAKER_SCREEN) {
             ManageCaretakerScreen(navController)
+        }
+        composable(NavRoutes.MANAGE_STUDENTS_SCREEN) {
+            ManageStudentScreen(navController)
         }
     }
 }

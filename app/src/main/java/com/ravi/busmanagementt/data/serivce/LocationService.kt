@@ -112,12 +112,9 @@ class LocationService : Service() {
         realtimeLocationRepository.startLocationUpdates()
             .onEach { location ->
                 if (locationSharingStateManager.sharingState.value == LocationSharingState.SHARING) {
-                    Log.d("LocationService", "Sharing true....")
                     val currentBusId = busId ?: return@onEach
                     if (doesPassLocationFilters(location)) {
-                        Log.d("LocationService", "Location filter passed....")
                         serviceScope.launch {
-                            Log.d("Testing - Location Service", "Adding Location to List")
                             locationSharingStateManager.locationPoints.value =
                                 locationSharingStateManager.locationPoints.value + LatLng(
                                     location.latitude,
@@ -138,13 +135,11 @@ class LocationService : Service() {
                                         busStops[numberOfStopsReached].geoPoint.latitude,
                                         busStops[numberOfStopsReached].geoPoint.longitude
                                     ))
-                                Log.d("LocationService", "Distance: $distance from myLocation to stop ${busStops[numberOfStopsReached].stopName}")
                                 if (hasStopReached) {
                                     numberOfStopsReached++
                                 }
                             }
 
-                            Log.d("LocationService", "Pushing Location to Realtime Database")
                             realtimeLocationRepository.pushLocationToFRTD(currentBusId, location, numberOfStopsReached)
                             lastPushedLocation = location
                         }

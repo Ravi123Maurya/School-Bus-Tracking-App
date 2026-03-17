@@ -125,6 +125,7 @@ fun LoginScreen(
 
 
     LoginContent(
+        portal = portal,
         hasLoginPressed = authState is AuthState.Loading,
         onLoginPressed = { email, password ->
             authViewModel.login(email, password, portal)
@@ -138,6 +139,7 @@ fun LoginScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun LoginContent(
+    portal: String,
     hasLoginPressed: Boolean = false,
     onLoginPressed: (String, String) -> Unit,
     onBackPress: () -> Unit = {}
@@ -145,11 +147,22 @@ private fun LoginContent(
 
     val uriHandler = LocalUriHandler.current
 
+val context = LocalContext.current
     var email by remember { mutableStateOf("testadmin@gmail.com") }
     var password by remember { mutableStateOf("123456") }
     var isPasswordVisible by remember { mutableStateOf(false) }
     var hasPolicyAccepted by remember { mutableStateOf(false) }
 
+    // todo: testing (remove in prod)
+    LaunchedEffect(portal) {
+        context.showToast("Portal: $portal")
+        email = when (portal) {
+            Portals.ADMIN.name -> "testadmin@gmail.com"
+            Portals.PARENT.name -> "testparent@gmail.com"
+            Portals.DRIVER.name -> "bus_test_1@test.com"
+            else -> "newcaretaker@gmail.com"
+        }
+    } ///
     val visibleState = remember {
         MutableTransitionState(false).apply {
             targetState = true

@@ -6,6 +6,7 @@ import com.ravi.busmanagementt.domain.model.BusAndDriver
 import com.ravi.busmanagementt.domain.model.BusStop
 import com.ravi.busmanagementt.domain.model.Caretaker
 import com.ravi.busmanagementt.domain.model.Parent
+import com.ravi.busmanagementt.domain.model.Student
 import com.ravi.busmanagementt.utils.Resource
 import kotlinx.coroutines.flow.Flow
 
@@ -38,5 +39,10 @@ interface AdminRepository {
 
     suspend fun getAllCaretakers() : Flow<Resource<List<Caretaker>>>
     suspend fun updateCaretaker(caretaker: Caretaker) : Flow<Resource<String>>
+
+    suspend fun getAllStudents() : Flow<Resource<List<Student>>>
+    suspend fun addStudent(student: Student) : Flow<Resource<String>>
+    suspend fun updateStudent(student: Student) : Flow<Resource<String>>
+    suspend fun deleteStudent(stuId: String) : Flow<Resource<String>>
 
 }

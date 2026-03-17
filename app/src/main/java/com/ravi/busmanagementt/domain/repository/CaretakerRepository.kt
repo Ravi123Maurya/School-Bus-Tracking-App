@@ -6,9 +6,9 @@ import kotlinx.coroutines.flow.Flow
 
 interface CaretakerRepository {
 
-    suspend fun getStudentsOfBus() : Flow<Resource<List<Child>>>
+    suspend fun getStudentsForCaretaker() : Flow<Resource<List<Child>>>
 
-    suspend fun markAttendance(studentId: String, status: String) : Flow<Resource<String>>
+    suspend fun markAttendance(studentId: String, status: String, isPickup: Boolean?) : Flow<Resource<String>>
 
 
 }

@@ -1,10 +1,10 @@
-package com.ravi.busmanagementt.presentation.home.admin.features.managecaretaker
+package com.ravi.busmanagementt.presentation.home.admin.features.managestudents
+
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ravi.busmanagementt.domain.model.Caretaker
+import com.ravi.busmanagementt.domain.model.Student
 import com.ravi.busmanagementt.domain.repository.AdminRepository
-import com.ravi.busmanagementt.presentation.home.admin.features.manageparents.AddParentState
 import com.ravi.busmanagementt.utils.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -14,27 +14,27 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-data class CaretakerUiState(
+data class StudentUiState(
     val isLoading: Boolean = false,
-    val caretakers: List<Caretaker> = emptyList(),
+    val students: List<Student> = emptyList(),
     val showDialog: Boolean = false,
     val errorMsg: String? = null,
     val successMsg: String? = null,
 )
 
-sealed interface CaretakerEvents {
-    data object GetAllCaretakers : CaretakerEvents
-    data class OnShowDialog(val shouldShow: Boolean) : CaretakerEvents
-    data class AddNewCaretaker(val caretaker: Caretaker) : CaretakerEvents
-    data class UpdateCaretaker(val caretaker: Caretaker) : CaretakerEvents
+sealed interface StudentEvents {
+    data object GetAllStudents : StudentEvents
+    data class OnShowDialog(val shouldShow: Boolean) : StudentEvents
+    data class AddNewStudent(val student: Student) : StudentEvents
+    data class UpdateStudent(val student: Student) : StudentEvents
 }
 
 @HiltViewModel
-class ManageCaretakerViewModel @Inject constructor(
+class ManageStudentsViewModel @Inject constructor(
     private val adminRepository: AdminRepository
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(CaretakerUiState())
+    private val _state = MutableStateFlow(StudentUiState())
     val state = _state.asStateFlow()
 
 
@@ -43,34 +43,34 @@ class ManageCaretakerViewModel @Inject constructor(
 
 
     init {
-        getAllCaretaker()
+        getAllStudents()
         getAllBusIds()
     }
 
 
-    fun onEvent(events: CaretakerEvents) {
+    fun onEvent(events: StudentEvents) {
         when (events) {
-            is CaretakerEvents.AddNewCaretaker -> {
-                addNewCaretaker(events.caretaker)
+            is StudentEvents.AddNewStudent -> {
+                addNewStudent(events.student)
             }
 
-            CaretakerEvents.GetAllCaretakers -> {
-                getAllCaretaker()
+            StudentEvents.GetAllStudents -> {
+                getAllStudents()
             }
 
-            is CaretakerEvents.UpdateCaretaker -> {
-                updateCaretaker(events.caretaker)
+            is StudentEvents.UpdateStudent -> {
+                updateStudent(events.student)
             }
 
-            is CaretakerEvents.OnShowDialog -> {
+            is StudentEvents.OnShowDialog -> {
                 _state.update { it.copy(showDialog = events.shouldShow) }
             }
         }
     }
 
 
-    private fun getAllCaretaker() = viewModelScope.launch(Dispatchers.IO) {
-        adminRepository.getAllCaretakers().collect { result ->
+    private fun getAllStudents() = viewModelScope.launch(Dispatchers.IO) {
+        adminRepository.getAllStudents().collect { result ->
             when (result) {
                 is Resource.Error -> {
                     _state.update {
@@ -90,7 +90,7 @@ class ManageCaretakerViewModel @Inject constructor(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            caretakers = result.data ?: emptyList(),
+                            students = result.data ?: emptyList(),
                             successMsg = result.message,
                             errorMsg = null,
                         )
@@ -118,8 +118,8 @@ class ManageCaretakerViewModel @Inject constructor(
         }
     }
 
-    private fun addNewCaretaker(caretaker: Caretaker) = viewModelScope.launch(Dispatchers.IO) {
-        adminRepository.addCaretaker(caretaker).collect { result ->
+    private fun addNewStudent(student: Student) = viewModelScope.launch(Dispatchers.IO) {
+        adminRepository.addStudent(student).collect { result ->
             when (result) {
                 is Resource.Error -> {
                     _state.update {
@@ -144,14 +144,14 @@ class ManageCaretakerViewModel @Inject constructor(
                             successMsg = result.message
                         )
                     }
-                    getAllCaretaker()
+                    getAllStudents()
                 }
             }
         }
     }
 
-    private fun updateCaretaker(caretaker: Caretaker) = viewModelScope.launch(Dispatchers.IO) {
-        adminRepository.updateCaretaker(caretaker).collect { result ->
+    private fun updateStudent(student: Student) = viewModelScope.launch(Dispatchers.IO) {
+        adminRepository.updateStudent(student).collect { result ->
             when (result) {
                 is Resource.Error -> {
                     _state.update {
@@ -176,7 +176,7 @@ class ManageCaretakerViewModel @Inject constructor(
                             errorMsg = null,
                         )
                     }
-                    getAllCaretaker()
+                    getAllStudents()
                 }
             }
         }

@@ -131,4 +131,8 @@ dependencies {
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3") // For coroutines
     testImplementation("org.mockito:mockito-core:5.7.0") // If you need to mock classes
     testImplementation("org.mockito.kotlin:mockito-kotlin:5.1.0")
+
+
+    // Todo: Remove this (added for learning)
+    implementation("org.jetbrains.kotlin:kotlin-reflect:2.2.21")
 }

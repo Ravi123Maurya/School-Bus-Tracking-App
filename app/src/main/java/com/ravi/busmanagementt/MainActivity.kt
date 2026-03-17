@@ -1,14 +1,16 @@
 package com.ravi.busmanagementt
 
 import android.os.Bundle
-import android.os.StrictMode
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ravi.busmanagementt.presentation.navigation.NavGraph
 import com.ravi.busmanagementt.presentation.viewmodels.MapViewModel
+import com.ravi.busmanagementt.presentation.viewmodels.PortalViewModel
+
 import com.ravi.busmanagementt.ui.theme.BusManagementTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -19,12 +21,13 @@ class MainActivity : ComponentActivity() {
 
         super.onCreate(savedInstanceState)
 
+        val portalViewModel: PortalViewModel by viewModels()
         val mapViewModel: MapViewModel by viewModels()
 
         enableEdgeToEdge()
         setContent {
             BusManagementTheme {
-                NavGraph(mapViewModel)
+                NavGraph(mapViewModel, portalViewModel)
             }
         }
     }

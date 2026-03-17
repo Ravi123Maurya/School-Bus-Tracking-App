@@ -1,5 +1,7 @@
 package com.ravi.busmanagementt.presentation.home.caretaker
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -18,9 +20,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.ravi.busmanagementt.domain.model.Attendance
+import com.ravi.busmanagementt.presentation.components.AlertDialogBus
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import kotlin.collections.set
@@ -35,14 +40,14 @@ data class Child(
     val parentName: String,
     val parentContact: String,
     val busNumber: String? = null,
-    val profileColor: Color = Color(0xFF8B5CF6)
+    val profileColor: Color = Color(0xFF8B5CF6),
+    val todayRideAttendance: Attendance? = null
 )
 
 
 enum class AttendanceStatus(val label: String, val color: Color) {
     PRESENT("Present", Color(0xFF10B981)),
     ABSENT("Absent", Color(0xFFEF4444)),
-    LATE("Late", Color(0xFFF59E0B)),
     NOT_MARKED("Not Marked", Color(0xFF64748B))
 }
 
@@ -113,25 +118,54 @@ object SampleData {
     )
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun MarkAttendanceContent(
+    isPickup: Boolean?,
     children: List<Child> = SampleData.getChildren(),
+    onRideTypeClick: (Boolean) -> Unit,
     onStatusChange: (String, String) -> Unit
 ) {
 
     val today = remember { LocalDate.now() }
-    val attendanceMap = remember {
+    val attendanceMap = remember(children,isPickup) {
         mutableStateMapOf<String, AttendanceStatus>().apply {
             children.forEach { child ->
-                this[child.id] = AttendanceStatus.NOT_MARKED
+                this[child.id] = when (isPickup) {
+                    true -> {
+                        when (child.todayRideAttendance?.pickup?.status) {
+                            AttendanceStatus.PRESENT.label -> AttendanceStatus.PRESENT
+                            AttendanceStatus.ABSENT.label -> AttendanceStatus.ABSENT
+                            else -> AttendanceStatus.NOT_MARKED
+                        }
+                    }
+                    false -> {
+                        when (child.todayRideAttendance?.drop?.status) {
+                            AttendanceStatus.PRESENT.label -> AttendanceStatus.PRESENT
+                            AttendanceStatus.ABSENT.label -> AttendanceStatus.ABSENT
+                            else -> AttendanceStatus.NOT_MARKED
+                        }
+                    }
+                    else -> AttendanceStatus.NOT_MARKED
+                }
             }
         }
     }
+
+    var showRideSelectionAlert by remember { mutableStateOf<Boolean?>(null) }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
     ) {
+
+        // Ride Type
+        RideType(
+            isPickup = isPickup,
+            hasPickupClick = { isPickup ->
+                showRideSelectionAlert = isPickup
+            })
+
         // Date Header
         AttendanceDateHeader(date = today)
 
@@ -152,8 +186,11 @@ fun MarkAttendanceContent(
                     child = child,
                     status = attendanceMap[child.id] ?: AttendanceStatus.NOT_MARKED,
                     onStatusChange = { newStatus ->
-                        attendanceMap[child.id] = newStatus
-                        onStatusChange(child.name, newStatus.label)
+                        if (isPickup != null) {
+                            attendanceMap[child.id] = newStatus
+                            onStatusChange(child.id, newStatus.label)
+                        }
+
                     }
                 )
             }
@@ -162,8 +199,118 @@ fun MarkAttendanceContent(
 
         }
     }
+
+    showRideSelectionAlert?.let {
+        AlertDialogBus(
+            title = "Ride Type",
+            text = "Are you sure ride is " +
+                    if (it) "pickup?" else "drop?",
+            onConfirm = {
+                onRideTypeClick(it)
+                showRideSelectionAlert = null
+            },
+            onDismiss = { showRideSelectionAlert = null }
+        )
+    }
 }
 
+@Preview(showBackground = true)
+@Composable
+private fun RideType(
+    isPickup: Boolean? = null,
+    hasPickupClick: (Boolean) -> Unit = {}
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        RideButton(
+            modifier = Modifier
+                .animateContentSize()
+                .weight(
+                    when (isPickup) {
+                        true -> 1.5f
+                        else -> 1f
+                    }
+                ),
+            text = "Pickup",
+            textColor = when (isPickup) {
+                true -> Color.White
+                false -> Color.LightGray
+                else -> Color.Black
+            },
+            containerColor = when (isPickup) {
+                true -> Color.Green
+                false -> Color.Black.copy(alpha = 0.1f)
+                else -> Color.White
+            },
+            borderColor = when (isPickup) {
+                false -> Color.Black.copy(alpha = 0.1f)
+                else -> Color.Green
+            },
+            onClick = { hasPickupClick(true) }
+        )
+        RideButton(
+            modifier = Modifier
+                .animateContentSize()
+                .weight(
+                    when (isPickup) {
+                        false -> 1.5f
+                        else -> 1f
+                    }
+                ),
+            text = "Drop",
+            textColor = when (isPickup) {
+                true -> Color.LightGray
+                false -> Color.White
+                else -> Color.Black
+            },
+            containerColor = when (isPickup) {
+                true -> Color.Black.copy(alpha = 0.1f)
+                false -> Color.Blue
+                else -> Color.White
+            },
+            borderColor = when (isPickup) {
+                true ->Color.Black.copy(alpha = 0.1f)
+                else -> Color.Blue
+            },
+            onClick = { hasPickupClick(false) }
+        )
+    }
+}
+
+@Composable
+private fun RideButton(
+    modifier: Modifier = Modifier,
+    text: String,
+    textColor: Color = Color.White,
+    containerColor: Color = Color.Green,
+    borderColor: Color = Color.Green,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .border(2.dp, borderColor, RoundedCornerShape(12.dp))
+            .background(containerColor)
+            .clickable(onClick = onClick)
+            .padding(16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            color = textColor,
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = FontWeight.Bold
+            )
+        )
+    }
+}
+
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 private fun AttendanceDateHeader(date: LocalDate) {
     Card(
@@ -263,7 +410,11 @@ private fun AttendanceCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(12.dp)
     ) {
-        Column(modifier = Modifier.animateContentSize().padding(16.dp)) {
+        Column(
+            modifier = Modifier
+                .animateContentSize()
+                .padding(16.dp)
+        ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically

@@ -20,15 +20,21 @@ import com.google.firebase.functions.functions
 import com.ravi.busmanagementt.BuildConfig
 import com.ravi.busmanagementt.data.remote.DirectionsApiService
 import com.ravi.busmanagementt.data.remote.decodePolyline
+import com.ravi.busmanagementt.domain.model.Attendance
 import com.ravi.busmanagementt.domain.model.BusAndDriver
 import com.ravi.busmanagementt.domain.model.BusStop
 import com.ravi.busmanagementt.domain.model.Caretaker
 import com.ravi.busmanagementt.domain.model.Parent
+import com.ravi.busmanagementt.domain.model.Ride
+import com.ravi.busmanagementt.domain.model.Student
 import com.ravi.busmanagementt.domain.repository.AdminRepository
 import com.ravi.busmanagementt.utils.Resource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,6 +48,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import java.util.Scanner
+import java.util.UUID
 import javax.inject.Inject
 
 class AdminRepositoryImpl @Inject constructor(
@@ -438,16 +445,13 @@ class AdminRepositoryImpl @Inject constructor(
 
 
         try {
-            withContext(Dispatchers.IO) {
-                // Make the call with the single map object
-                val response = directionsApiService.getDirections(queryOptions)
-
-                if (response.routes.isNotEmpty()) {
-                    val encodedPolyline = response.routes.first().overview_polyline.points
-                    return@withContext decodePolyline(encodedPolyline)
-                } else {
-
-                }
+            // Make the call with the single map object
+            val response = withContext(Dispatchers.IO) { directionsApiService.getDirections(queryOptions) }
+            if (response.routes.isNotEmpty()) {
+                val encodedPolyline = response.routes.first().overview_polyline.points
+                return decodePolyline(encodedPolyline)
+            } else {
+                return emptyList()
             }
         } catch (e: Exception) {
             // This will catch network errors (like HTTP 400) or JSON parsing errors.
@@ -689,6 +693,112 @@ class AdminRepositoryImpl @Inject constructor(
                 return@flow
             } catch (e: Exception) {
                 emit(Resource.Error(e.message ?: "Unknown error"))
+            }
+        }
+    }
+
+    override suspend fun getAllStudents(): Flow<Resource<List<Student>>> = flow {
+        emit(Resource.Loading())
+        try {
+            val studentsSnapshot = fireStore.collection("students").get().await()
+
+            val studentsList = coroutineScope {
+                studentsSnapshot.documents.map { studentDoc ->
+                    async(Dispatchers.IO) {
+                        val attendanceSnapshot = fireStore.collection("students")
+                            .document(studentDoc.id)
+                            .collection("attendance")
+                            .get()
+                            .await()
+
+                        val attendanceList = attendanceSnapshot.documents.map { attDoc ->
+                            val pickupMap = attDoc.get("pickup") as? Map<String, Any>
+                            val dropMap = attDoc.get("drop") as? Map<String, Any>
+
+                            Attendance(
+                                date = attDoc.id, // docId = date
+                                pickup = pickupMap?.let {
+                                    Ride(
+                                        status = it["status"] as? String ?: "",
+                                        timestamp = it["timestamp"] as? Long ?: 0L
+                                    )
+                                },
+                                drop = dropMap?.let {
+                                    Ride(
+                                        status = it["status"] as? String ?: "",
+                                        timestamp = it["timestamp"] as? Long ?: 0L
+                                    )
+                                }
+                            )
+                        }
+
+                        Student(
+                            id = studentDoc.id,
+                            name = studentDoc.getString("name") ?: "No name",
+                            std = studentDoc.getString("std") ?: "No std",
+                            parentName = studentDoc.getString("parentName") ?: "No parent name",
+                            assignedBusId = studentDoc.getString("assignedBusId") ?: "Not found",
+                            attendanceList = attendanceList
+                        )
+                    }
+                }.awaitAll()
+            }
+
+            emit(Resource.Success(studentsList))
+        } catch (e: Exception) {
+            emit(Resource.Error(e.message ?: "Unknown error"))
+        }
+    }
+
+
+
+    override suspend fun addStudent(student: Student): Flow<Resource<String>> {
+        return flow {
+            emit(Resource.Loading())
+            try {
+                val docSnapshot = fireStore.collection("students").document()
+
+                val data = mapOf(
+                    "name" to student.name,
+                    "parentName" to student.parentName,
+                    "std" to student.std,
+                    "assignedBusId" to student.assignedBusId
+                )
+                docSnapshot.set(data).await()
+                emit(Resource.Success("New student added successfully"))
+            } catch (e: Exception) {
+                emit(Resource.Error(e.message ?: "Unknow error"))
+            }
+        }
+    }
+
+    override suspend fun updateStudent(student: Student): Flow<Resource<String>> {
+        return flow {
+            emit(Resource.Loading())
+            try {
+                val docSnapshot = fireStore.collection("students").document(student.id)
+
+                val data = mapOf(
+                    "name" to student.name,
+                    "parentName" to student.parentName,
+                    "std" to student.std,
+                    "assignedBusId" to student.assignedBusId
+                )
+                docSnapshot.update(data).await()
+                emit(Resource.Success("Updated successfully"))
+            } catch (e: Exception) {
+                emit(Resource.Error(e.message ?: "Unknow error"))
+            }
+        }
+    }
+
+    override suspend fun deleteStudent(stuId: String): Flow<Resource<String>> {
+        return flow {
+            emit(Resource.Loading())
+            try {
+
+            } catch (e: Exception) {
+                emit(Resource.Error(e.message ?: "Unknow error"))
             }
         }
     }

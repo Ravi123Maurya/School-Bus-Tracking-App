@@ -1,4 +1,5 @@
-package com.ravi.busmanagementt.presentation.home.admin.features.manageparents
+package com.ravi.busmanagementt.presentation.home.admin.features.managestudents
+
 
 import android.util.Patterns
 import android.widget.Toast
@@ -27,223 +28,158 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.google.firebase.firestore.GeoPoint
-import com.ravi.busmanagementt.domain.model.Parent
+import com.ravi.busmanagementt.domain.model.Attendance
+import com.ravi.busmanagementt.domain.model.Ride
+import com.ravi.busmanagementt.domain.model.Student
 import com.ravi.busmanagementt.presentation.components.CircularLoading
 import com.ravi.busmanagementt.presentation.components.NavBackScaffold
 import com.ravi.busmanagementt.ui.theme.AppColors
 import com.ravi.busmanagementt.utils.showToast
 
 
-// Form state for adding/editing parent
-data class ParentFormState(
+// Form state for adding/editing Student
+data class StudentFormState(
     val name: String = "",
-    val email: String = "",
-    val password: String = "",
-    val confirmPassword: String = "",
+    val std: String = "",
+    val parentName: String = "",
     val assignedBusId: String = "",
-    val latitude: String = "",
-    val longitude: String = "",
-    val isPasswordVisible: Boolean = false,
-    val isConfirmPasswordVisible: Boolean = false
 )
 
-data class ParentFormErrors(
+data class StudentFormErrors(
     val nameError: String? = null,
-    val emailError: String? = null,
-    val passwordError: String? = null,
-    val confirmPasswordError: String? = null,
+    val stdError: String? = null,
+    val parentError: String? = null,
     val busIdError: String? = null,
-    val locationError: String? = null
 )
 
 // Edit form state (only editable fields)
-data class EditParentFormState(
+data class EditStudentFormState(
     val name: String = "",
+    val std: String = "",
+    val parentName: String = "",
     val assignedBusId: String = "",
-    val latitude: String = "",
-    val longitude: String = ""
 )
 
-data class EditParentFormErrors(
+data class EditStudentFormErrors(
     val nameError: String? = null,
-    val busIdError: String? = null,
-    val locationError: String? = null
+    val stdError: String? = null,
+    val parentError: String? = null,
+    val busIdError: String? = null
 )
 
 // Main Screen
 @Composable
-fun ManageParentsScreen(
+fun ManageStudentScreen(
     navController: NavController,
-    manageParentViewModel: ManageParentViewModel = hiltViewModel(),
+    manageStudentViewModel: ManageStudentsViewModel = hiltViewModel(),
     busId: String? = null
 ) {
 
     val context = LocalContext.current
-    var showAddDialog by remember { mutableStateOf(false) }
-    var editingParent by remember { mutableStateOf<Parent?>(null) }
-    var showDeleteDialog by remember { mutableStateOf<Parent?>(null) }
+    var editingStudent by remember { mutableStateOf<Student?>(null) }
+    var showDeleteDialog by remember { mutableStateOf<Student?>(null) }
 
-    val addParentState by manageParentViewModel.addParentState.collectAsStateWithLifecycle()
-    val getParentState by manageParentViewModel.getParentState.collectAsStateWithLifecycle()
-    val updateParentState by manageParentViewModel.updateParentState.collectAsStateWithLifecycle()
-    val deleteParentState by manageParentViewModel.deleteParentState.collectAsStateWithLifecycle()
 
-    var parents by remember { mutableStateOf(emptyList<Parent>()) }
-    val availableBusIds by manageParentViewModel.allBusIds.collectAsStateWithLifecycle()
+    val state by manageStudentViewModel.state.collectAsStateWithLifecycle()
+    val availableBusIds by manageStudentViewModel.allBusIds.collectAsStateWithLifecycle()
 
     var showBusDropdown by remember { mutableStateOf(false) }
 
-    var isFetchingParents by remember { mutableStateOf(false) }
-    // Listen for GET parents state changes
-    LaunchedEffect(getParentState) {
-        when (val state = getParentState) {
-            is GetParentState.Error -> {
-                isFetchingParents = false
-                Toast.makeText(context, state.message, Toast.LENGTH_LONG).show()
-            }
 
-            GetParentState.Loading -> {
-                isFetchingParents = true
-            }
-
-            is GetParentState.Success -> {
-                isFetchingParents = false
-
-                parents = state.parents
-            }
+    LaunchedEffect(state.isLoading) {
+        state.errorMsg?.let { msg ->
+            context.showToast(msg)
         }
-    }
-
-    // Listen for ADD parent state changes
-    LaunchedEffect(addParentState) {
-        when (val state = addParentState) {
-            is AddParentState.Error -> {
-                Toast.makeText(context, state.message, Toast.LENGTH_SHORT).show()
-            }
-
-            AddParentState.Idle -> {}
-            AddParentState.Loading -> {}
-            is AddParentState.Success -> {
-                Toast.makeText(context, state.message, Toast.LENGTH_SHORT).show()
-                showAddDialog = false
-                manageParentViewModel.getAllParents()
-                manageParentViewModel.resetAddParentState()
-            }
-        }
-    }
-
-    // Listen for UPDATE parent state changes
-    LaunchedEffect(updateParentState) {
-        when (val state = updateParentState) {
-            UpdateParentState.Idle -> {}
-            UpdateParentState.Loading -> {}
-
-            is UpdateParentState.Error -> {
-                context.showToast(state.message)
-                editingParent = null
-            }
-
-            is UpdateParentState.Success -> {
-                context.showToast(state.message)
-                editingParent = null
-                manageParentViewModel.getAllParents()
-            }
-        }
-    }
-
-    // Listen Delete Parent state changes
-    LaunchedEffect(deleteParentState) {
-        when (val state = deleteParentState) {
-            DeleteParentState.Idle -> {}
-            DeleteParentState.Loading -> {}
-            is DeleteParentState.Error -> {
-                context.showToast(state.message)
-                showDeleteDialog = null
-            }
-
-            is DeleteParentState.Success -> {
-                context.showToast(state.message)
-                showDeleteDialog = null
-                manageParentViewModel.getAllParents()
-            }
+        state.successMsg?.let { msg ->
+            context.showToast(msg)
         }
     }
 
 
-    ManageParentsContent(
-        isFetchingParents = isFetchingParents,
-        parents = parents,
-        onAddParent = { showAddDialog = true },
-        onEditParent = { parentId ->
+
+    ManageStudentContent(
+        isFetchingStudents = state.isLoading,
+        students = state.students,
+        onAddStudent = {
+            manageStudentViewModel.onEvent(StudentEvents.OnShowDialog(true))
+        },
+        onEditStudent = { StudentId ->
             // Navigate to edit screen or show edit dialog
-            editingParent = parents.find { it.parentId == parentId }
+            editingStudent = state.students.find { it.id == StudentId }
+            manageStudentViewModel.onEvent(StudentEvents.OnShowDialog(true))
         },
-        onDeleteParent = { parent ->
-            showDeleteDialog = parent
+        onDeleteStudent = { Student ->
+            showDeleteDialog = Student
         },
-        onParentClick = { parentId ->
-            // Navigate to parent details
+        onStudentClick = { StudentId ->
+            // Navigate to Student details
         },
         onBackClick = { navController.popBackStack() }
     )
 
 
 
-    if (showAddDialog) {
-        AddParentDialog(
+    if (state.showDialog) {
+        AddStudentDialog(
             showBusDropdown = showBusDropdown,
             availableBusIds = availableBusIds,
-            isLoading = addParentState is AddParentState.Loading,
+            isLoading = state.isLoading,
             defaultBusId = busId,
-            onDismiss = { showAddDialog = false },
-            onSave = { parent ->
-                // Create parent
-                manageParentViewModel.addNewParent(parent)
+            onDismiss = {
+                manageStudentViewModel.onEvent(StudentEvents.OnShowDialog(false))
+            },
+            onSave = { Student ->
+                // Create Student
+                manageStudentViewModel.onEvent(StudentEvents.AddNewStudent(Student))
             },
             onDropdownChange = { showBusDropdown = it }
         )
     }
 
-    editingParent?.let { parent ->
-        EditParentDialog(
-            isLoading = updateParentState is UpdateParentState.Loading,
-            showBusDropdown = showBusDropdown,
-            parent = parent,
-            onDismiss = { editingParent = null },
-            onSave = { updatedParent ->
-                // Update parent in firestore database
-                manageParentViewModel.updateParent(updatedParent)
-            },
-            availableBusIds = availableBusIds,
-            onDropdownChange = { showBusDropdown = it }
-        )
+    if (state.showDialog){
+        editingStudent?.let { student ->
+            EditStudentDialog(
+                isLoading = state.isLoading,
+                showBusDropdown = showBusDropdown,
+                student = student,
+                onDismiss = { editingStudent = null },
+                onSave = { updatedStudent ->
+                    // Update Student in firestore database
+                    manageStudentViewModel.onEvent(StudentEvents.UpdateStudent(updatedStudent))
+                },
+                availableBusIds = availableBusIds,
+                onDropdownChange = { showBusDropdown = it }
+            )
+        }
     }
+
 
     // Delete Confirmation Dialog
-    showDeleteDialog?.let { parent ->
+    showDeleteDialog?.let { student ->
         AlertDialog(
             onDismissRequest = { showDeleteDialog = null },
-            title = { Text("Delete Parent") },
+            title = { Text("Delete Student") },
             text = {
-                Text("Are you sure you want to delete ${parent.name}? This action cannot be undone.")
+                Text("Are you sure you want to delete ${student.name}? This action cannot be undone.")
             },
             confirmButton = {
 
                 Button(
                     onClick = {
-                        manageParentViewModel.deleteParent(parent.parentId, parent.email)
+//                        manageStudentViewModel.deleteStudent(Student.id, Student.email)
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFFE53935)
                     )
                 ) {
-                    if (deleteParentState is DeleteParentState.Loading) {
+                    if (state.isLoading) {
                         CircularLoading()
                     } else {
                         Text("Delete")
@@ -260,43 +196,43 @@ fun ManageParentsScreen(
 }
 
 @Composable
-private fun ManageParentsContent(
-    isFetchingParents: Boolean,
-    parents: List<Parent>,
-    onAddParent: () -> Unit,
-    onEditParent: (String) -> Unit,
-    onDeleteParent: (Parent) -> Unit,
-    onParentClick: (String) -> Unit,
+private fun ManageStudentContent(
+    isFetchingStudents: Boolean,
+    students: List<Student>,
+    onAddStudent: () -> Unit,
+    onEditStudent: (String) -> Unit,
+    onDeleteStudent: (Student) -> Unit,
+    onStudentClick: (String) -> Unit,
     onBackClick: () -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedBusFilter by remember { mutableStateOf("All") }
 
-    val filteredParents = remember(parents, searchQuery, selectedBusFilter) {
-        parents.filter { parent ->
+    val filteredStudents = remember(students, searchQuery, selectedBusFilter) {
+        students.filter { student ->
             val matchesSearch = searchQuery.isEmpty() ||
-                    parent.name.contains(searchQuery, ignoreCase = true) ||
-                    parent.email.contains(searchQuery, ignoreCase = true)
+                    student.name.contains(searchQuery, ignoreCase = true) ||
+                    student.parentName.contains(searchQuery, ignoreCase = true)
 
             val matchesBus = selectedBusFilter == "All" ||
-                    parent.assignedBusId == selectedBusFilter
+                    student.assignedBusId == selectedBusFilter
 
             matchesSearch && matchesBus
         }
     }
 
-    val availableBuses = remember(parents) {
-        listOf("All") + parents.map { it.assignedBusId }.distinct().sorted()
+    val availableBuses = remember(students) {
+        listOf("All") + students.map { it.assignedBusId }.distinct().sorted()
     }
 
     NavBackScaffold(
-        barTitle = "Manage Parents",
+        barTitle = "Manage Students",
         onBackClick = onBackClick,
         fabIcon = Icons.Default.Add,
-        onFabClick = onAddParent
+        onFabClick = onAddStudent
     ) { paddingValues ->
 
-        if (isFetchingParents) {
+        if (isFetchingStudents) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -310,13 +246,13 @@ private fun ManageParentsContent(
                     .padding(paddingValues)
             ) {
                 // Stats Header
-                ParentsStatsHeader(
-                    totalParents = parents.size,
-                    filteredParents = filteredParents.size
+                StudentsStatsHeader(
+                    totalStudents = students.size,
+                    filteredStudents = filteredStudents.size
                 )
 
                 // Search and Filter
-                ParentSearchAndFilter(
+                StudentSearchAndFilter(
                     searchQuery = searchQuery,
                     onSearchChange = { searchQuery = it },
                     selectedBus = selectedBusFilter,
@@ -324,31 +260,32 @@ private fun ManageParentsContent(
                     onBusFilterChange = { selectedBusFilter = it }
                 )
 
-                // Parents List
-                if (filteredParents.isEmpty()) {
-                    EmptyParentsState(
+                // Students List
+                if (filteredStudents.isEmpty()) {
+                    EmptyStudentsState(
                         hasSearch = searchQuery.isNotEmpty(),
-                        onAddClick = onAddParent
+                        onAddClick = onAddStudent
                     )
                 } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(vertical = 8.dp)
+                        contentPadding = PaddingValues(vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         items(
-                            items = filteredParents,
-                            key = { it.parentId }
-                        ) { filteredParent ->
-                            ParentItem(
-                                parent = filteredParent,
-                                onClick = { onParentClick(filteredParent.parentId) },
-                                onEdit = { onEditParent(filteredParent.parentId) },
-                                onDelete = {
-                                    onDeleteParent(filteredParent)
+                            items = filteredStudents,
+                            key = { it.id }
+                        ) { filteredStudent ->
+                            StudentItem(
+                                student = filteredStudent,
+                                onClick = { onStudentClick(filteredStudent.id) },
+                                onEdit = { onEditStudent(filteredStudent.id) },
+                                onDeleteStudent = {
+                                    onDeleteStudent(filteredStudent)
                                 }
                             )
 
-                            if (filteredParent.parentId != filteredParents.last().parentId) {
+                            if (filteredStudent.id != filteredStudents.last().id) {
                                 HorizontalDivider(
                                     modifier = Modifier.padding(horizontal = 16.dp),
                                     color = Color.LightGray.copy(alpha = 0.3f)
@@ -364,9 +301,9 @@ private fun ManageParentsContent(
 }
 
 @Composable
-private fun ParentsStatsHeader(
-    totalParents: Int,
-    filteredParents: Int
+private fun StudentsStatsHeader(
+    totalStudents: Int,
+    filteredStudents: Int
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -379,8 +316,8 @@ private fun ParentsStatsHeader(
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             StatCard(
-                label = "Total Parents",
-                value = totalParents.toString(),
+                label = "Total Students",
+                value = totalStudents.toString(),
                 icon = Icons.Default.People,
                 modifier = Modifier.weight(1f)
             )
@@ -389,7 +326,7 @@ private fun ParentsStatsHeader(
 
             StatCard(
                 label = "Showing",
-                value = filteredParents.toString(),
+                value = filteredStudents.toString(),
                 icon = Icons.Default.FilterList,
                 valueColor = AppColors.Primary,
                 modifier = Modifier.weight(1f)
@@ -442,7 +379,7 @@ private fun StatCard(
 }
 
 @Composable
-private fun ParentSearchAndFilter(
+private fun StudentSearchAndFilter(
     searchQuery: String,
     onSearchChange: (String) -> Unit,
     selectedBus: String,
@@ -460,7 +397,7 @@ private fun ParentSearchAndFilter(
             value = searchQuery,
             onValueChange = onSearchChange,
             modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Search by name or email...") },
+            placeholder = { Text("Search by name or parent...") },
             leadingIcon = {
                 Icon(Icons.Default.Search, contentDescription = "Search")
             },
@@ -513,7 +450,7 @@ private fun ParentSearchAndFilter(
 }
 
 @Composable
-private fun EmptyParentsState(
+private fun EmptyStudentsState(
     hasSearch: Boolean,
     onAddClick: () -> Unit
 ) {
@@ -534,7 +471,7 @@ private fun EmptyParentsState(
         Spacer(Modifier.height(16.dp))
 
         Text(
-            text = if (hasSearch) "No parents found" else "No parents added yet",
+            text = if (hasSearch) "No Students found" else "No Students added yet",
             fontSize = 16.sp,
             fontWeight = FontWeight.Medium,
             color = Color.Gray
@@ -544,7 +481,7 @@ private fun EmptyParentsState(
             Spacer(Modifier.height(8.dp))
 
             Text(
-                text = "Add parents to assign them to buses",
+                text = "Add Students to assign them to buses",
                 fontSize = 14.sp,
                 color = Color.Gray,
                 textAlign = TextAlign.Center
@@ -564,181 +501,446 @@ private fun EmptyParentsState(
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(Modifier.width(8.dp))
-                Text("Add First Parent")
+                Text("Add First Student")
+            }
+        }
+    }
+}
+
+// Student Item with Attendance
+@Composable
+fun StudentItem(
+    student: Student,
+    onClick: () -> Unit,
+    onEdit: () -> Unit,
+    onDeleteStudent: (Student) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var showMenu by remember { mutableStateOf(false) }
+    var showAttendance by remember { mutableStateOf(false) }
+
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        shape = RoundedCornerShape(0.dp)
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            // Main Student Info
+            ListItem(
+                modifier = Modifier
+                    .clickable(onClick = onClick)
+                    .padding(vertical = 4.dp),
+                headlineContent = {
+                    Text(
+                        text = student.name,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 16.sp,
+                        color = Color(0xFF1E293B)
+                    )
+                },
+                supportingContent = {
+                    Column(modifier = Modifier.padding(top = 4.dp)) {
+                        StudentInfoRow(
+                            icon = Icons.Default.School,
+                            text = student.std,
+                            color = Color(0xFF3B82F6)
+                        )
+
+                        Spacer(Modifier.height(4.dp))
+
+                        StudentInfoRow(
+                            icon = Icons.Default.Person,
+                            text = student.parentName,
+                            color = Color(0xFF64748B)
+                        )
+
+                        Spacer(Modifier.height(4.dp))
+
+                        StudentInfoRow(
+                            icon = Icons.Default.DirectionsBus,
+                            text = "Bus: ${student.assignedBusId}",
+                            color = Color(0xFF8B5CF6)
+                        )
+                    }
+                },
+                leadingContent = {
+                    StudentAvatar(name = student.name)
+                },
+                trailingContent = {
+                    StudentMenu(
+                        showMenu = showMenu,
+                        onMenuClick = { showMenu = true },
+                        onDismiss = { showMenu = false },
+                        onEdit = {
+                            showMenu = false
+                            onEdit()
+                        }
+                    )
+                }
+            )
+
+            // Attendance Section
+            if (!student.attendanceList.isNullOrEmpty()) {
+                AttendanceSection(
+                    attendanceList = student.attendanceList,
+                    isExpanded = showAttendance,
+                    onToggle = { showAttendance = !showAttendance }
+                )
             }
         }
     }
 }
 
 @Composable
-private fun ParentItem(
-    parent: Parent,
-    onClick: () -> Unit,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit
-) {
-    var showMenu by remember { mutableStateOf(false) }
-
-    ListItem(
+private fun StudentAvatar(name: String) {
+    Box(
         modifier = Modifier
-            .clickable(onClick = onClick)
-            .padding(vertical = 4.dp),
-        headlineContent = {
-            Text(
-                text = parent.name,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 16.sp
+            .size(56.dp)
+            .clip(CircleShape)
+            .background(Color(0xFF8B5CF6).copy(alpha = 0.1f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = name.take(2).uppercase(),
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF8B5CF6)
+        )
+    }
+}
+
+@Composable
+private fun StudentInfoRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    text: String,
+    color: Color
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(14.dp),
+            tint = color
+        )
+        Text(
+            text = text,
+            fontSize = 13.sp,
+            color = color,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun StudentMenu(
+    showMenu: Boolean,
+    onMenuClick: () -> Unit,
+    onDismiss: () -> Unit,
+    onEdit: () -> Unit
+) {
+    Box {
+        IconButton(onClick = onMenuClick) {
+            Icon(
+                imageVector = Icons.Default.MoreVert,
+                contentDescription = "More options",
+                tint = Color(0xFF64748B)
             )
-        },
-        supportingContent = {
-            Column(modifier = Modifier.padding(top = 4.dp)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Email,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp),
-                        tint = Color.Gray
-                    )
-                    Text(
-                        text = parent.email,
-                        fontSize = 13.sp,
-                        color = Color.Gray
-                    )
+        }
+
+        DropdownMenu(
+            expanded = showMenu,
+            onDismissRequest = onDismiss
+        ) {
+            DropdownMenuItem(
+                text = { Text("Edit") },
+                onClick = onEdit,
+                leadingIcon = {
+                    Icon(Icons.Default.Edit, contentDescription = null)
                 }
+            )
+        }
+    }
+}
 
-                Spacer(Modifier.height(4.dp))
+// Attendance Section
+@Composable
+private fun AttendanceSection(
+    attendanceList: List<Attendance>,
+    isExpanded: Boolean,
+    onToggle: () -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        HorizontalDivider(color = Color(0xFFE2E8F0))
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.DirectionsBus,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp),
-                        tint = AppColors.Primary
-                    )
-                    Text(
-                        text = "Bus: ${parent.assignedBusId}",
-                        fontSize = 12.sp,
-                        color = AppColors.Primary,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-
-                Spacer(Modifier.height(4.dp))
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.LocationOn,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp),
-                        tint = Color.Gray
-                    )
-                    Text(
-                        text = "Stop: " + parent.stopName.ifEmpty {
-                            "Not assigned"
-                        },
-                        fontSize = 11.sp,
-                        color = Color.Gray
-                    )
-                }
-            }
-        },
-        leadingContent = {
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(CircleShape)
-                    .background(AppColors.Primary.copy(alpha = 0.1f)),
-                contentAlignment = Alignment.Center
+        // Attendance Header
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onToggle)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(
-                    text = parent.name.take(2).uppercase(),
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = AppColors.Primary
+                Icon(
+                    imageVector = Icons.Default.EventNote,
+                    contentDescription = "Attendance",
+                    modifier = Modifier.size(20.dp),
+                    tint = Color(0xFF8B5CF6)
                 )
+                Text(
+                    text = "Attendance Record",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF1E293B)
+                )
+                AttendanceBadge(count = attendanceList.size)
             }
-        },
-        trailingContent = {
-            Box {
-                IconButton(onClick = { showMenu = true }) {
-                    Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = "More options"
+
+            Icon(
+                imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                contentDescription = if (isExpanded) "Collapse" else "Expand",
+                tint = Color(0xFF64748B)
+            )
+        }
+
+        // Attendance List
+        if (isExpanded) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                attendanceList.takeLast(5).reversed().forEach { attendance ->
+                    AttendanceCard(attendance = attendance)
+                }
+
+                if (attendanceList.size > 5) {
+                    Text(
+                        text = "Showing last 5 records",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF64748B),
+                        modifier = Modifier.padding(top = 4.dp)
                     )
                 }
 
-                DropdownMenu(
-                    expanded = showMenu,
-                    onDismissRequest = { showMenu = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("Edit") },
-                        onClick = {
-                            showMenu = false
-                            onEdit()
-                        },
-                        leadingIcon = {
-                            Icon(Icons.Default.Edit, contentDescription = null)
-                        }
-                    )
-
-                    DropdownMenuItem(
-                        text = { Text("Delete", color = Color(0xFFE53935)) },
-                        onClick = {
-                            showMenu = false
-                            onDelete()
-                        },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Default.Delete,
-                                contentDescription = null,
-                                tint = Color(0xFFE53935)
-                            )
-                        }
-                    )
-                }
+                Spacer(modifier = Modifier.height(4.dp))
             }
         }
-    )
+    }
 }
+
+@Composable
+private fun AttendanceBadge(count: Int) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(Color(0xFF8B5CF6).copy(alpha = 0.1f))
+            .padding(horizontal = 8.dp, vertical = 2.dp)
+    ) {
+        Text(
+            text = count.toString(),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF8B5CF6),
+            fontSize = 11.sp
+        )
+    }
+}
+
+@Composable
+private fun AttendanceCard(attendance: Attendance) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp)
+        ) {
+            // Date Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CalendarToday,
+                        contentDescription = "Date",
+                        modifier = Modifier.size(14.dp),
+                        tint = Color(0xFF64748B)
+                    )
+                    Text(
+                        text = attendance.date,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF1E293B)
+                    )
+                }
+
+                // Day Chip
+                DayChip(date = attendance.date)
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Pickup & Drop Status
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                RideStatusCard(
+                    title = "Pickup",
+                    ride = attendance.pickup,
+                    icon = Icons.Default.NorthEast,
+                    modifier = Modifier.weight(1f)
+                )
+
+                RideStatusCard(
+                    title = "Drop",
+                    ride = attendance.drop,
+                    icon = Icons.Default.SouthWest,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DayChip(date: String) {
+    val dayOfWeek = try {
+        val formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")
+        val localDate = java.time.LocalDate.parse(date, formatter)
+        localDate.dayOfWeek.getDisplayName(
+            java.time.format.TextStyle.SHORT,
+            java.util.Locale.getDefault()
+        )
+    } catch (e: Exception) {
+        "N/A"
+    }
+
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(Color(0xFF8B5CF6).copy(alpha = 0.1f))
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+    ) {
+        Text(
+            text = dayOfWeek,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF8B5CF6),
+            fontSize = 11.sp
+        )
+    }
+}
+
+
+@Composable
+private fun RideStatusCard(
+    title: String,
+    ride: Ride?,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    modifier: Modifier = Modifier
+) {
+    val status = ride?.status ?: "Absent"
+    val color = if (status == "Present") Color(0xFF10B981) else Color(0xFFEF4444)
+
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = color.copy(alpha = 0.05f)
+        ),
+        shape = RoundedCornerShape(6.dp),
+        border = CardDefaults.outlinedCardBorder().copy(
+            width = 1.dp,
+            brush = androidx.compose.ui.graphics.SolidColor(color.copy(alpha = 0.2f))
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            horizontalAlignment = Alignment.Start
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = title,
+                    modifier = Modifier.size(14.dp),
+                    tint = color
+                )
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Medium,
+                    color = Color(0xFF64748B),
+                    fontSize = 11.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = status,
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Bold,
+                color = color,
+                fontSize = 13.sp
+            )
+        }
+    }
+}
+
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AddParentDialog(
+private fun AddStudentDialog(
     showBusDropdown: Boolean = false,
     availableBusIds: List<String>,
     isLoading: Boolean = false,
     defaultBusId: String?,
     onDismiss: () -> Unit,
-    onSave: (Parent) -> Unit,
+    onSave: (Student) -> Unit,
     onDropdownChange: (Boolean) -> Unit,
 ) {
     var formState by remember {
         mutableStateOf(
-            ParentFormState(assignedBusId = defaultBusId ?: "")
+            StudentFormState(assignedBusId = defaultBusId ?: "")
         )
     }
-    var errors by remember { mutableStateOf(ParentFormErrors()) }
+    var errors by remember { mutableStateOf(StudentFormErrors()) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add New Parent") },
+        title = { Text("Add New Student") },
         text = {
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.heightIn(max = 500.dp)
             ) {
 
-                // Parent Name Field
+                // Student Name Field
                 item {
                     OutlinedTextField(
                         value = formState.name,
@@ -746,7 +948,7 @@ private fun AddParentDialog(
                             formState = formState.copy(name = it)
                             errors = errors.copy(nameError = null)
                         },
-                        label = { Text("Parent Name") },
+                        label = { Text("Student Name") },
                         placeholder = { Text("Ravi Maurya") },
                         leadingIcon = {
                             Icon(Icons.Default.Person, contentDescription = null)
@@ -758,119 +960,54 @@ private fun AddParentDialog(
                     )
                 }
 
-                // Parent Email Field
+                // Student Standard Field
                 item {
                     OutlinedTextField(
-                        value = formState.email,
+                        value = formState.std,
                         onValueChange = {
-                            formState = formState.copy(email = it)
-                            errors = errors.copy(emailError = null)
+                            formState = formState.copy(std = it)
+                            errors = errors.copy(stdError = null)
                         },
-                        label = { Text("Email") },
-                        placeholder = { Text("parent@example.com") },
+                        label = { Text("Standard") },
+                        placeholder = { Text("class 2") },
                         leadingIcon = {
-                            Icon(Icons.Default.Email, contentDescription = null)
+                            Icon(Icons.Default.School, contentDescription = null)
                         },
                         keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Email,
+                            keyboardType = KeyboardType.Text,
                             imeAction = ImeAction.Next
                         ),
-                        isError = errors.emailError != null,
-                        supportingText = errors.emailError?.let { { Text(it) } },
+                        isError = errors.stdError != null,
+                        supportingText = errors.stdError?.let { { Text(it) } },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
 
-                // Parent Password Field
+                // Student Password Field
                 item {
                     OutlinedTextField(
-                        value = formState.password,
+                        value = formState.parentName,
                         onValueChange = {
-                            formState = formState.copy(password = it)
-                            errors = errors.copy(passwordError = null)
+                            formState = formState.copy(parentName = it)
+                            errors = errors.copy(parentError = null)
                         },
-                        label = { Text("Password") },
+                        label = { Text("Parent Name") },
                         leadingIcon = {
-                            Icon(Icons.Default.Lock, contentDescription = null)
+                            Icon(Icons.Default.Person3, contentDescription = null)
                         },
-                        trailingIcon = {
-                            IconButton(
-                                onClick = {
-                                    formState = formState.copy(
-                                        isPasswordVisible = !formState.isPasswordVisible
-                                    )
-                                }
-                            ) {
-                                Icon(
-                                    imageVector = if (formState.isPasswordVisible)
-                                        Icons.Default.VisibilityOff
-                                    else
-                                        Icons.Default.Visibility,
-                                    contentDescription = null
-                                )
-                            }
-                        },
-                        visualTransformation = if (formState.isPasswordVisible)
-                            VisualTransformation.None
-                        else
-                            PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Password,
+                            keyboardType = KeyboardType.Text,
                             imeAction = ImeAction.Next
                         ),
-                        isError = errors.passwordError != null,
-                        supportingText = errors.passwordError?.let { { Text(it) } },
+                        isError = errors.parentError != null,
+                        supportingText = errors.parentError?.let { { Text(it) } },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
 
-                // Parent Confirm Password Field
-                item {
-                    OutlinedTextField(
-                        value = formState.confirmPassword,
-                        onValueChange = {
-                            formState = formState.copy(confirmPassword = it)
-                            errors = errors.copy(confirmPasswordError = null)
-                        },
-                        label = { Text("Confirm Password") },
-                        leadingIcon = {
-                            Icon(Icons.Default.Lock, contentDescription = null)
-                        },
-                        trailingIcon = {
-                            IconButton(
-                                onClick = {
-                                    formState = formState.copy(
-                                        isConfirmPasswordVisible = !formState.isConfirmPasswordVisible
-                                    )
-                                }
-                            ) {
-                                Icon(
-                                    imageVector = if (formState.isConfirmPasswordVisible)
-                                        Icons.Default.VisibilityOff
-                                    else
-                                        Icons.Default.Visibility,
-                                    contentDescription = null
-                                )
-                            }
-                        },
-                        visualTransformation = if (formState.isConfirmPasswordVisible)
-                            VisualTransformation.None
-                        else
-                            PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Password,
-                            imeAction = ImeAction.Next
-                        ),
-                        isError = errors.confirmPasswordError != null,
-                        supportingText = errors.confirmPasswordError?.let { { Text(it) } },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-
-                // Parent Assign Bus ID Field with Dropdown
+                // Student Assign Bus ID Field with Dropdown
                 item {
                     ExposedDropdownMenuBox(
                         expanded = showBusDropdown,
@@ -943,21 +1080,18 @@ private fun AddParentDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    val validationErrors = validateParentForm(formState)
+                    val validationErrors = validateStudentForm(formState)
                     if (validationErrors.hasErrors()) {
                         errors = validationErrors
                     } else {
-                        val parent = Parent(
+                        val Student = Student(
                             name = formState.name,
-                            email = formState.email,
-                            password = formState.password,
                             assignedBusId = formState.assignedBusId,
-                            busStopLocation = GeoPoint(
-                                formState.latitude.toDouble(),
-                                formState.longitude.toDouble()
-                            )
+                            id = formState.name,
+                            std = formState.std,
+                            parentName = formState.parentName
                         )
-                        onSave(parent)
+                        onSave(Student)
                     }
                 },
                 colors = ButtonDefaults.buttonColors(
@@ -967,7 +1101,7 @@ private fun AddParentDialog(
                 if (isLoading) {
                     CircularLoading()
                 } else {
-                    Text("Add Parent")
+                    Text("Add Student")
                 }
             }
         },
@@ -981,26 +1115,26 @@ private fun AddParentDialog(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun EditParentDialog(
+private fun EditStudentDialog(
     isLoading: Boolean,
     showBusDropdown: Boolean,
-    parent: Parent,
+    student: Student,
     onDismiss: () -> Unit,
-    onSave: (Parent) -> Unit,
+    onSave: (Student) -> Unit,
     onDropdownChange: (Boolean) -> Unit,
     availableBusIds: List<String>
 ) {
     var formState by remember {
         mutableStateOf(
-            EditParentFormState(
-                name = parent.name,
-                assignedBusId = parent.assignedBusId,
-                latitude = parent.busStopLocation.latitude.toString(),
-                longitude = parent.busStopLocation.longitude.toString()
+            EditStudentFormState(
+                name = student.name,
+                std = student.std,
+                parentName = student.parentName,
+                assignedBusId = student.assignedBusId,
             )
         )
     }
-    var errors by remember { mutableStateOf(EditParentFormErrors()) }
+    var errors by remember { mutableStateOf(EditStudentFormErrors()) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1014,7 +1148,7 @@ private fun EditParentDialog(
                     contentDescription = null,
                     tint = AppColors.Primary
                 )
-                Text("Edit Parent")
+                Text("Edit Student")
             }
         },
         text = {
@@ -1022,39 +1156,6 @@ private fun EditParentDialog(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.heightIn(max = 400.dp)
             ) {
-                // Email (read-only)
-                item {
-                    OutlinedTextField(
-                        value = parent.email,
-                        onValueChange = {},
-                        label = { Text("Email") },
-                        leadingIcon = {
-                            Icon(Icons.Default.Email, contentDescription = null)
-                        },
-                        enabled = false,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            disabledTextColor = Color.Gray,
-                            disabledBorderColor = Color.LightGray,
-                            disabledLeadingIconColor = Color.Gray,
-                            disabledLabelColor = Color.Gray
-                        ),
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-
-                item {
-                    Text(
-                        text = "Email cannot be changed",
-                        fontSize = 12.sp,
-                        color = Color.Gray,
-                        modifier = Modifier.padding(start = 4.dp)
-                    )
-                }
-
-                item {
-                    HorizontalDivider(color = Color.LightGray.copy(alpha = 0.3f))
-                }
 
                 // Editable: Name
                 item {
@@ -1064,7 +1165,7 @@ private fun EditParentDialog(
                             formState = formState.copy(name = it)
                             errors = errors.copy(nameError = null)
                         },
-                        label = { Text("Parent Name") },
+                        label = { Text("Student Name") },
                         placeholder = { Text("Ravi Maurya") },
                         leadingIcon = {
                             Icon(Icons.Default.Person, contentDescription = null)
@@ -1075,8 +1176,46 @@ private fun EditParentDialog(
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
+                // Editable: Standard
+                item {
+                    OutlinedTextField(
+                        value = formState.std,
+                        onValueChange = {
+                            formState = formState.copy(std = it)
+                            errors = errors.copy(stdError = null)
+                        },
+                        label = { Text("Standard") },
+                        placeholder = { Text("class 2") },
+                        leadingIcon = {
+                            Icon(Icons.Default.School, contentDescription = null)
+                        },
+                        isError = errors.stdError != null,
+                        supportingText = errors.stdError?.let { { Text(it) } },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                // Editable: Parent Name
+                item {
+                    OutlinedTextField(
+                        value = formState.parentName,
+                        onValueChange = {
+                            formState = formState.copy(parentName = it)
+                            errors = errors.copy(parentError = null)
+                        },
+                        label = { Text("Parent Name") },
+                        placeholder = { Text("Enter parent name") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Person3, contentDescription = null)
+                        },
+                        isError = errors.parentError != null,
+                        supportingText = errors.parentError?.let { { Text(it) } },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
 
-                // Parent Assign Bus ID Field with Dropdown
+                // Student Assign Bus ID Field with Dropdown
                 item {
                     ExposedDropdownMenuBox(
                         expanded = showBusDropdown,
@@ -1148,19 +1287,17 @@ private fun EditParentDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    val validationErrors = validateEditParentForm(formState)
+                    val validationErrors = validateEditStudentForm(formState)
                     if (validationErrors.hasErrors()) {
                         errors = validationErrors
                     } else {
-                        val updatedParent = parent.copy(
+                        val updatedStudent = student.copy(
                             name = formState.name,
-                            assignedBusId = formState.assignedBusId,
-                            busStopLocation = GeoPoint(
-                                formState.latitude.toDouble(),
-                                formState.longitude.toDouble()
-                            )
+                            std = formState.std,
+                            parentName = formState.parentName,
+                            assignedBusId = formState.assignedBusId
                         )
-                        onSave(updatedParent)
+                        onSave(updatedStudent)
                     }
                 },
                 colors = ButtonDefaults.buttonColors(
@@ -1189,86 +1326,59 @@ private fun EditParentDialog(
 }
 
 // Validation for edit form
-private fun validateEditParentForm(state: EditParentFormState): EditParentFormErrors {
-    var errors = EditParentFormErrors()
+private fun validateEditStudentForm(state: EditStudentFormState): EditStudentFormErrors {
+    var errors = EditStudentFormErrors()
 
     if (state.name.isBlank()) {
         errors = errors.copy(nameError = "Name is required")
+    }
+
+    if (state.std.isBlank()) {
+        errors = errors.copy(stdError = "Standard is required")
+    }
+
+    if (state.parentName.isBlank()) {
+        errors = errors.copy(parentError = "Parent name is required")
     }
 
     if (state.assignedBusId.isBlank()) {
         errors = errors.copy(busIdError = "Bus ID is required")
     }
 
-    if (state.latitude.isBlank() || state.longitude.isBlank()) {
-        errors = errors.copy(locationError = "Both latitude and longitude are required")
-    } else {
-        val lat = state.latitude.toDoubleOrNull()
-        val lng = state.longitude.toDoubleOrNull()
-        if (lat == null || lng == null) {
-            errors = errors.copy(locationError = "Invalid coordinates")
-        } else if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-            errors = errors.copy(locationError = "Coordinates out of range")
-        }
-    }
 
     return errors
 }
 
-private fun EditParentFormErrors.hasErrors(): Boolean {
-    return nameError != null || busIdError != null || locationError != null
+private fun EditStudentFormErrors.hasErrors(): Boolean {
+    return nameError != null || busIdError != null
 }
 
 // Validation
-private fun validateParentForm(state: ParentFormState): ParentFormErrors {
-    var errors = ParentFormErrors()
+private fun validateStudentForm(state: StudentFormState): StudentFormErrors {
+    var errors = StudentFormErrors()
 
     if (state.name.isBlank()) {
         errors = errors.copy(nameError = "Name is required")
     }
 
-    if (state.email.isBlank()) {
-        errors = errors.copy(emailError = "Email is required")
-    } else if (!Patterns.EMAIL_ADDRESS.matcher(state.email).matches()) {
-        errors = errors.copy(emailError = "Invalid email format")
+    if (state.std.isBlank()) {
+        errors = errors.copy(stdError = "Standard is required")
     }
 
-    if (state.password.isBlank()) {
-        errors = errors.copy(passwordError = "Password is required")
-    } else if (state.password.length < 6) {
-        errors = errors.copy(passwordError = "Password must be at least 6 characters")
-    }
-
-    if (state.confirmPassword.isBlank()) {
-        errors = errors.copy(confirmPasswordError = "Please confirm password")
-    } else if (state.password != state.confirmPassword) {
-        errors = errors.copy(confirmPasswordError = "Passwords do not match")
+    if (state.parentName.isBlank()) {
+        errors = errors.copy(parentError = "Parent name is required")
     }
 
     if (state.assignedBusId.isBlank()) {
         errors = errors.copy(busIdError = "Bus ID is required")
     }
 
-    if (state.latitude.isBlank() || state.longitude.isBlank()) {
-        errors = errors.copy(locationError = "Both latitude and longitude are required")
-    } else {
-        val lat = state.latitude.toDoubleOrNull()
-        val lng = state.longitude.toDoubleOrNull()
-        if (lat == null || lng == null) {
-            errors = errors.copy(locationError = "Invalid coordinates")
-        } else if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-            errors = errors.copy(locationError = "Coordinates out of range")
-        }
-    }
-
     return errors
 }
 
-private fun ParentFormErrors.hasErrors(): Boolean {
+private fun StudentFormErrors.hasErrors(): Boolean {
     return nameError != null ||
-            emailError != null ||
-            passwordError != null ||
-            confirmPasswordError != null ||
-            busIdError != null ||
-            locationError != null
+            parentError != null ||
+            stdError != null ||
+            busIdError != null
 }

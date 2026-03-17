@@ -32,7 +32,7 @@ fun DriverTestingButton(
             }else{
                 driverTestingViewModel.onAction(
                     DriverTestingAction.OnStartTrip(
-                        busId = "bus_test_2",
+                        busId = "bus_test_1",
                         route = routePoints,
                         speedKmph = 120.0,
                         timeIntervalMillis = 2000L

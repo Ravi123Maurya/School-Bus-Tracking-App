@@ -43,9 +43,9 @@ import com.ravi.busmanagementt.utils.showToast
 // Form state for adding/editing Caretaker
 data class CaretakerFormState(
     val name: String = "",
-    val email: String = "@gmail.com",
-    val password: String = "123456",
-    val confirmPassword: String = "123456",
+    val email: String = "",
+    val password: String = "",
+    val confirmPassword: String = "",
     val assignedBusId: String = "",
     val isPasswordVisible: Boolean = false,
     val isConfirmPasswordVisible: Boolean = false
@@ -158,18 +158,18 @@ fun ManageCaretakerScreen(
 
 
     // Delete Confirmation Dialog
-    showDeleteDialog?.let { Caretaker ->
+    showDeleteDialog?.let { caretaker ->
         AlertDialog(
             onDismissRequest = { showDeleteDialog = null },
             title = { Text("Delete Caretaker") },
             text = {
-                Text("Are you sure you want to delete ${Caretaker.name}? This action cannot be undone.")
+                Text("Are you sure you want to delete ${caretaker.name}? This action cannot be undone.")
             },
             confirmButton = {
 
                 Button(
                     onClick = {
-//                        manageCaretakerViewModel.deleteCaretaker(Caretaker.CaretakerId, Caretaker.email)
+//                        manageCaretakerViewModel.deleteCaretaker(caretaker.id, caretaker.email)
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFFE53935)

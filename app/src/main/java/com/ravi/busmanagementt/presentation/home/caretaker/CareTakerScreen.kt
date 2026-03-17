@@ -1,6 +1,8 @@
 package com.ravi.busmanagementt.presentation.home.caretaker
 
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -25,6 +27,7 @@ import com.ravi.busmanagementt.utils.showToast
 
 
 // Main Caretaker Screen
+@RequiresApi(Build.VERSION_CODES.O)
 @Preview(showBackground = true)
 @Composable
 fun CaretakerScreen(
@@ -34,7 +37,7 @@ fun CaretakerScreen(
 
     val context = LocalContext.current
     val state by caretakerViewModel.uiState.collectAsState()
-
+    val isPickup by caretakerViewModel.isPickupRide.collectAsState()
 
     Column(
         modifier = modifier
@@ -47,8 +50,12 @@ fun CaretakerScreen(
         CaretakerHeader()
 
         MarkAttendanceContent(
+            isPickup = isPickup,
             children = state.students,
-            onStatusChange = {id, status ->
+            onRideTypeClick = {
+                caretakerViewModel.onEvent(UiEvent.OnRideTypeClick(it))
+            },
+            onStatusChange = { id, status ->
                 caretakerViewModel.onEvent(UiEvent.MarkAttendance(id, status))
                 caretakerViewModel.onEvent(UiEvent.GetStudents)
             }
@@ -79,89 +86,3 @@ private fun CaretakerHeader() {
     }
 }
 
-
-@Composable
-fun FeatureCard(
-    icon: ImageVector = Icons.Default.Favorite,
-    label: String = "Feature",
-    cardColor: Color = Color(0xFFEC4899),
-    modifier: Modifier = Modifier,
-    onCardClick: () -> Unit = {}
-) {
-    Card(
-        modifier = modifier.aspectRatio(1.2f),
-        colors = CardDefaults.cardColors(
-            containerColor = cardColor
-        ),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        onClick = onCardClick
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Icon(
-                modifier = Modifier.size(40.dp),
-                imageVector = icon,
-                contentDescription = label,
-                tint = Color.White
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = label,
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                fontSize = 14.sp,
-                textAlign = TextAlign.Center,
-                lineHeight = 18.sp
-            )
-        }
-    }
-}
-
-// Alternative: Compact Version (like your original)
-@Composable
-fun CompactFeatureCard(
-    icon: ImageVector = Icons.Default.Favorite,
-    label: String = "Feature",
-    cardColor: Color = Color(0xFFEC4899),
-    modifier: Modifier = Modifier,
-    onCardClick: () -> Unit = {}
-) {
-    Card(
-        modifier = modifier,
-        colors = CardDefaults.cardColors(
-            containerColor = cardColor
-        ),
-        onClick = onCardClick,
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .width(120.dp)
-                .height(100.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Icon(
-                modifier = Modifier.size(32.dp),
-                imageVector = icon,
-                contentDescription = "feature",
-                tint = Color.White
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = label,
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                fontSize = 13.sp,
-                textAlign = TextAlign.Center
-            )
-        }
-    }
-}
