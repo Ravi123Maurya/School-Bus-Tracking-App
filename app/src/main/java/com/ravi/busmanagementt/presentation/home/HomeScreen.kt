@@ -362,8 +362,6 @@ private fun HomeScreenContent(
 
                     // Only for Driver
                     if (portal == Portals.DRIVER.value) {
-                        DriverTestingButton(routePoints = busRoute) // Testing
-                        Spacer(Modifier.height(16.dp))
                         StartStopButton(
                             isLocationPointsEmpty = liveLocationPoints.isNullOrEmpty(),
                             sharingState
