@@ -136,11 +136,7 @@ class MapViewModel @Inject constructor(
 
     private val _realtimeAllBusesLocationState =
         MutableStateFlow<Map<String, List<RealtimeLocation>>?>(null)
-    val realtimeAllBusesLocationState = _realtimeAllBusesLocationState.asStateFlow()
-
-    val isSharingLocation = locationSharingStateManager.isSharingLocation
     val sharingState = locationSharingStateManager.sharingState
-    val driverSharingLocation = locationSharingStateManager.locationPoints.asStateFlow()
     val hasInternetConnection: StateFlow<Boolean> =
         connectivityManager.networkStatus
             .flowOn(Dispatchers.Default)

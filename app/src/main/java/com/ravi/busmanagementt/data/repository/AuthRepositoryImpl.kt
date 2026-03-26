@@ -4,6 +4,7 @@ import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthException
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreException
 import com.ravi.busmanagementt.domain.repository.AuthRepository
 import com.ravi.busmanagementt.utils.Resource
 import kotlinx.coroutines.flow.Flow
@@ -27,29 +28,30 @@ class AuthRepositoryImpl @Inject constructor(
 
                 val authResult = firebaseAuth.signInWithEmailAndPassword(email, password).await()
                 val uid = authResult.user?.uid
-                Log.d("AuthCheck", "AuthRepo: UID: $uid")
 
                 if (uid != null) {
                     val userDoc = firestore.collection("users").document(uid).get().await()
-                    if (userDoc.exists()){
+                    if (userDoc.exists()) {
                         val userRole = userDoc.getString("role") ?: "n/a"
                         if (userRole.lowercase().trim() == portal.lowercase().trim()) {
                             emit(Resource.Success("Login Success"))
                         } else {
                             emit(Resource.Error("This account doesn't belong to $portal portal"))
                         }
-                    }else{
-                        Log.d("AuthCheck", "AuthRepo: UserDoc doesn't exist")
+                    } else {
                         emit(Resource.Error("Account not found"))
                     }
                 } else {
-                    Log.d("AuthCheck", "AuthRepo: UID is null")
                     emit(Resource.Error("Email doesn't exist"))
                 }
 
+            } catch (e: FirebaseFirestoreException) {
+                emit(Resource.Error("Database access denied. Please contact admin."))
             } catch (e: FirebaseAuthException) {
                 e.printStackTrace()
                 emit(Resource.Error(e.localizedMessage ?: "Something went wrong"))
+            } catch (e: Exception) {
+                emit(Resource.Error("An unexpected error occurred. Please try again."))
             }
         }
 

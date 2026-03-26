@@ -10,9 +10,9 @@
               <option name="connection">
                 <ConnectionSetting>
                   <option name="appId" value="com.ravi.busmanagementt" />
-                  <option name="mobileSdkAppId" value="1:798289952740:android:fd369f117022df184f11f1" />
-                  <option name="projectId" value="bustrackapp-loadtest" />
-                  <option name="projectNumber" value="798289952740" />
+                  <option name="mobileSdkAppId" value="1:76633479635:android:b56434dcb63e245004b726" />
+                  <option name="projectId" value="bus-tacking-system-ca065" />
+                  <option name="projectNumber" value="76633479635" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />

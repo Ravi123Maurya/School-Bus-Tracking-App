@@ -67,7 +67,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.google.android.gms.maps.model.LatLng
-import com.google.maps.android.SphericalUtil
 import com.ravi.busmanagementt.data.repository.RealtimeLocation
 import com.ravi.busmanagementt.presentation.components.BusTopAppBar
 import com.ravi.busmanagementt.presentation.components.PermissionHandler
@@ -79,7 +78,6 @@ import com.ravi.busmanagementt.presentation.viewmodels.PortalViewModel
 import com.ravi.busmanagementt.ui.theme.AppColors
 import com.ravi.busmanagementt.utils.MapUtils
 import com.ravi.busmanagementt.data.datastore.Portals
-import kotlin.math.roundToInt
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
@@ -92,7 +90,6 @@ import com.ravi.busmanagementt.presentation.components.InternetConnectionAlertVi
 import com.ravi.busmanagementt.presentation.home.admin.AdminPortal
 import com.ravi.busmanagementt.presentation.home.caretaker.CaretakerScreen
 import com.ravi.busmanagementt.presentation.viewmodels.BusViewModel
-import com.ravi.busmanagementt.utils.DistanceMatrix
 import kotlinx.coroutines.launch
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -127,12 +124,6 @@ fun HomeScreen(
         )
     } }
 
-    LaunchedEffect(realtimeLocation) {
-        Log.d("Location Sharing", "RealtimeLocation - ${realtimeLocation?.size}")
-        Log.d("Location Sharing", "LiveLocation - ${liveLocationsPoints?.size}")
-    }
-    //Testing
-    val busRoute by mapViewModel.busRouteLatLng.collectAsStateWithLifecycle()
 
 
     //////////////// -------- Map Content ---------- //////////////////////////////
@@ -184,20 +175,14 @@ fun HomeScreen(
         onPermissionGranted = {
 
             HomeScreenContent(
-                busRoute = busRoute, // Testing
                 hasInternetConnection = hasInternetConnection,
                 portal = portal?.value ?: "No Value",
-                busId = busId,
                 busEta = busEta, // Parent only
                 remainingDistance = remainingDistance, // Parent only
-                email = authViewModel.email ?: "No Email",
                 sharingState = sharingLocationState,
                 isMapExpanded = mapViewState.isMapExpanded,
                 realtimeLocation = realtimeLocation,
                 mapContent = currentMapContent,
-                initialMarkerPoint = mapViewState.initialLocation,
-                userLocation = mapViewState.userLocation,
-                parentStopLocation = stopLocation,
                 busStopPoints = busStops,
                 liveLocationPoints = liveLocationsPoints,
                 logoutClick = {
@@ -242,7 +227,6 @@ fun HomeScreen(
             onDismiss = { isSharingButtonClick = false },
             onConfirm = {
                 scope.launch {
-//                    mapViewModel.toggleSharingLocationState()
                     Intent(context, LocationService::class.java).also {
                         it.action = if (isCurrentlySharing) {
                             LocationService.ACTION_STOP
@@ -274,20 +258,15 @@ fun HomeScreen(
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 private fun HomeScreenContent(
-    busRoute: List<LatLng>, // Testing
     hasInternetConnection: Boolean,
     portal: String,
-    busId: String? = null,
     busEta: String,
     remainingDistance: String,
-    email: String,
     sharingState: LocationSharingState,
     isMapExpanded: Boolean,
     realtimeLocation: List<RealtimeLocation>?,
     mapContent: @Composable () -> Unit,
-    initialMarkerPoint: LatLng?,
-    userLocation: LatLng?,
-    parentStopLocation: LatLng?,
+
     liveLocationPoints: List<LatLng>? = null,
     busStopPoints: List<BusStop>? = null,
     logoutClick: () -> Unit = {},
@@ -296,7 +275,6 @@ private fun HomeScreenContent(
     onSettingClick: () -> Unit = {},
     navController: NavController
 ) {
-    val context = LocalContext.current
     val modifier =
         if (isMapExpanded) Modifier.fillMaxSize() else Modifier
             .fillMaxWidth()
@@ -393,15 +371,9 @@ private fun HomeScreenContent(
                             )
                     }
 
-                    // Logout Button todo: Remove logout button
+                    // Logout Button todo: Remove logout button from here - add maybe in topbar
                     BigButton("Logout", icon = Icons.Default.Logout) { logoutClick() }
 
-                    /// DataStore Values // todo: Remove
-//                    Text("Portal: $portal")
-//                    Text("BusId: $busId")
-//                    Text("Email: ${email}")
-//                    if (portal == Portals.PARENT.value)
-//                        Text(realtimeLocation.toString())
                 }
             }
 

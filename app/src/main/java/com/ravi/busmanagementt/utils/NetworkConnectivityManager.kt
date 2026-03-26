@@ -28,8 +28,8 @@ class NetworkConnectivityManagerImpl @Inject constructor(
 
         val networkCallback = object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
-                // Network is available, but we should check if it has internet capabilities
-                // For simple available check, we can emit Available here,
+                // Network is available, but should check if it has internet capabilities
+                // For simple available check, can emit Available here,
                 // but usually CapabilitiesChanged is where you verify 'VALIDATED'
                 trySend(NetworkStatus.Available)
             }
